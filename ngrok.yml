@@ -1,9 +1,13 @@
 version: "2"
 authtoken: 268qEKb5KVa6BZLPprVRWjMjoex_QNCJ33goeeA73Sd5NC8z
+
+
 tunnels:
   ollama:
     addr: 11434
     proto: http
+    domain: living-story-ollama.ngrok.app
   sidecar:
     addr: 5001
     proto: http
+    domain: living-story-sidecar.ngrok.app
