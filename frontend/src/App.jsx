@@ -27,6 +27,7 @@ export default function App() {
     "LOOKING 4 THE PLOT in THE INSPEXTOR???, makes sense but i dont think u'll find it here",
     events,
     currentConfig,
+    import.meta.env.VITE_API_URL,
   );
 
   const goToSlide = useCallback((index) => {
