@@ -3,7 +3,6 @@ import { uploadImage } from "../api/upload.js";
 import { useFaceCrops } from "../hooks/useFaceCrops.js";
 import Ticker from "./Ticker.jsx";
 import { HERO_TAGS, defaultTagForDay } from "../config/heroTags.js";
-import placeholderGif from "../assets/placeholder.gif";
 
 // How long the "done" celebration state lasts before resetting (ms)
 const DONE_DURATION = 50000;
@@ -327,9 +326,7 @@ export default function UploadAside({
               : isUploading
                 ? `linear-gradient(to top, var(--red) ${progress}%, transparent ${progress}%)`
                 : "none",
-          backgroundImage: previewSrc
-            ? "none"
-            : "url('/src/assets/placeholder.gif')",
+          backgroundImage: previewSrc ? "none" : "url('placeholder.gif')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           overflow: "hidden",
@@ -445,7 +442,7 @@ export default function UploadAside({
                   }}
                 >
                   <img
-                    src={`/src/assets/tags/${tag.svg}`}
+                    src={`/tags/${tag.svg}`}
                     alt={tag.label}
                     width={50}
                     height={50}

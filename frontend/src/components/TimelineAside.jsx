@@ -176,48 +176,57 @@ export default function TimelineAside({ events, currentDay, isActive }) {
       }}
     >
       {/* Sticky header */}
-      <Ticker
-        position="top"
-        text={"the plot database"}
-        color={"var(--highlight)"}
-      />
       <div
         style={{
-          position: "absolute",
+          position: "sticky",
           width: "100%",
-          top: 40,
+          top: 0,
           zIndex: 20,
-          background: "var(--highlight)",
-          height: 40,
-          border: "var(--borderwidth) solid var(--red)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 14px",
         }}
       >
-        <h1
+        <Ticker
+          position="top"
+          text={"the plot database"}
+          color={"var(--highlight)"}
+        />
+        <div
           style={{
-            margin: 0,
-            fontSize: 11,
-            letterSpacing: 3,
-            color: "var(--red)",
-            textTransform: "uppercase",
-            fontWeight: 400,
+            position: "absolute",
+            width: "100%",
+            top: 40,
+            zIndex: 20,
+            background: "var(--highlight)",
+            height: 40,
+            border: "var(--borderwidth) solid var(--red)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 14px",
           }}
         >
-          The Plotline
-        </h1>
-        <span
-          style={{
-            fontSize: 11,
-            letterSpacing: 2,
-            color: "var(--red)",
-            textTransform: "uppercase",
-          }}
-        >
-          Day {scrollDay}
-        </span>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 11,
+              letterSpacing: 3,
+              color: "var(--red)",
+              textTransform: "uppercase",
+              fontWeight: 400,
+            }}
+          >
+            The Plotline
+          </h1>
+          <span
+            style={{
+              fontSize: 11,
+              letterSpacing: 2,
+              color: "var(--red)",
+              textTransform: "uppercase",
+            }}
+          >
+            Day {scrollDay}
+          </span>
+        </div>
       </div>
 
       {events.length === 0 && (
@@ -473,7 +482,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                 {/* Tag SVG — random position using actual rx/ry */}
                 {/* Hero tag SVG — floats just outside ellipse edge */}
                 <image
-                  href={`/src/assets/tags/${heroTag.svg}`}
+                  href={`/tags/${heroTag.svg}`}
                   x={cx + rx * 2.55 * Math.cos(angle) - TAG_SIZE / 2}
                   y={cy + ry * 2.55 * Math.sin(angle) - TAG_SIZE / 2}
                   width={TAG_SIZE}
