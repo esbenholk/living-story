@@ -9,7 +9,7 @@
  * them straight to Cloudinary.
  */
 
-const SIDECAR_URL = process.env.SIDECAR_URL || "http://localhost:5001";
+const SIDECAR_URL = process.env.REMBG_URL || "http://localhost:5001";
 
 /**
  * @param {string} imageUrl        — Cloudinary URL of the uploaded photo
