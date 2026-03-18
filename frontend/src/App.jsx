@@ -10,7 +10,7 @@ import { useSocket } from "./hooks/useSocket.js";
 
 const panelLabels = ["SUBMIT", "THE PLOT", "THE SAGA"];
 
-const HEALTH_INTERVAL = 30;
+const HEALTH_INTERVAL = 30_000;
 
 export default function App() {
   const { events, chapters, currentDay, currentConfig, addEvent } = useStory();
@@ -27,26 +27,27 @@ export default function App() {
 
   const base = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-  const checkServices = useCallback(async () => {
-    const [sidecar, ollama] = await Promise.all([
-      fetch(`${base}/api/health/sidecar`, { signal: AbortSignal.timeout(6000) })
-        .then((r) => r.ok)
-        .catch(() => false),
-      fetch(`${base}/api/health/ollama`, { signal: AbortSignal.timeout(6000) })
-        .then((r) => r.ok)
-        .catch(() => false),
-    ]);
-
-    console.log("checks services", sidecar, ollama);
-
-    setServiceStatus({ sidecar, ollama });
-  }, [base]);
-
   useEffect(() => {
-    checkServices();
-    const interval = setInterval(checkServices, HEALTH_INTERVAL);
+    const run = async () => {
+      const [sidecar, ollama] = await Promise.all([
+        fetch(`${base}/api/health/sidecar`, {
+          signal: AbortSignal.timeout(6000),
+        })
+          .then((r) => r.ok)
+          .catch(() => false),
+        fetch(`${base}/api/health/ollama`, {
+          signal: AbortSignal.timeout(6000),
+        })
+          .then((r) => r.ok)
+          .catch(() => false),
+      ]);
+      setServiceStatus({ sidecar, ollama });
+    };
+
+    run();
+    const interval = setInterval(run, HEALTH_INTERVAL);
     return () => clearInterval(interval);
-  }, [checkServices]);
+  }, []);
 
   const servicesReady =
     serviceStatus.sidecar === true && serviceStatus.ollama === true;
