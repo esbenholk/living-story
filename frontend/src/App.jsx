@@ -23,6 +23,12 @@ export default function App() {
   //   }
   // }
 
+  console.log(
+    "LOOKING 4 THE PLOT in THE INSPEXTOR???, makes sense but i dont think u'll find it here",
+    events,
+    currentConfig,
+  );
+
   const goToSlide = useCallback((index) => {
     if (swiperRef.current) swiperRef.current.slideTo(index);
   }, []);
