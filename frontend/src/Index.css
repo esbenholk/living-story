@@ -1,0 +1,92 @@
+:root {
+  --blue: blue;
+  --red: #ff3400;
+  --borderwidth: 5px;
+  --highlight: rgb(17, 255, 0);
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Bold.woff2") format("woff2"),
+    url("Panchang-Bold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Extrabold.woff2") format("woff2"),
+    url("Panchang-Extrabold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Extralight.woff2") format("woff2"),
+    url("Panchang-Extralight.woff") format("woff");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Light.woff2") format("woff2"),
+    url("Panchang-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Medium.woff2") format("woff2"),
+    url("Panchang-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Regular.woff2") format("woff2"),
+    url("Panchang-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Panchang";
+  src:
+    url("Panchang-Semibold.woff2") format("woff2"),
+    url("Panchang-Semibold.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+h1 {
+  font-size: 20px;
+  margin-bottom: 40px;
+  color: var(--highlight);
+}
+
+* {
+  font-family: "Panchang";
+}
+
+.ticker {
+  -webkit-box-shadow: inset 0px 0px 10px 5px rgba(255, 51, 0, 0.9);
+  -moz-box-shadow: inset 0px 0px 10px 5px rgba(255, 51, 0, 0.9);
+  box-shadow: inset 0px 0px 10px 5px rgba(255, 51, 0, 0.9);
+}

@@ -1,0 +1,15 @@
+{
+  "name": "living-story",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "yarn install && cd backend && yarn install && cd ../frontend && yarn install",
+    "start": "concurrently --names \"BACKEND,FRONTEND,SIDECAR\" --prefix-colors \"blue,green,magenta\" \"yarn start:backend\" \"yarn start:frontend\" \"yarn start:sidecar\"",
+    "start:backend": "cd backend && yarn dev",
+    "start:frontend": "cd frontend && yarn dev",
+    "start:sidecar": "cd sidecar && python app.py"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

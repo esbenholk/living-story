@@ -1,0 +1,9 @@
+flask==3.0.0
+rembg
+opencv-python
+Pillow==12.1.0
+cloudinary==1.36.0
+requests==2.32.3
+onnxruntime==1.24.2
+python-dotenv==1.0.0
+waitress==3.0.0

@@ -1,0 +1,9 @@
+version: "2"
+authtoken: 268qEKb5KVa6BZLPprVRWjMjoex_QNCJ33goeeA73Sd5NC8z
+tunnels:
+  ollama:
+    addr: 11434
+    proto: http
+  sidecar:
+    addr: 5001
+    proto: http
