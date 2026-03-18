@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "./Index.css";
@@ -10,6 +10,8 @@ import { useSocket } from "./hooks/useSocket.js";
 
 const panelLabels = ["SUBMIT", "THE PLOT", "THE SAGA"];
 
+const HEALTH_INTERVAL = 30;
+
 export default function App() {
   const { events, chapters, currentDay, currentConfig, addEvent } = useStory();
   useSocket(addEvent);
@@ -17,17 +19,46 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef(null);
 
-  // function goToSlide(index) {
-  //   if (swiperRef.current) {
-  //     swiperRef.current.slideTo(index);
-  //   }
-  // }
+  // null = still checking, true = ok, false = down
+  const [serviceStatus, setServiceStatus] = useState({
+    sidecar: null,
+    ollama: null,
+  });
+
+  const base = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+  const checkServices = useCallback(async () => {
+    const [sidecar, ollama] = await Promise.all([
+      fetch(`${base}/api/health/sidecar`, { signal: AbortSignal.timeout(6000) })
+        .then((r) => r.ok)
+        .catch(() => false),
+      fetch(`${base}/api/health/ollama`, { signal: AbortSignal.timeout(6000) })
+        .then((r) => r.ok)
+        .catch(() => false),
+    ]);
+
+    console.log("checks services", sidecar, ollama);
+
+    setServiceStatus({ sidecar, ollama });
+  }, [base]);
+
+  useEffect(() => {
+    checkServices();
+    const interval = setInterval(checkServices, HEALTH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [checkServices]);
+
+  const servicesReady =
+    serviceStatus.sidecar === true && serviceStatus.ollama === true;
+  const servicesChecking =
+    serviceStatus.sidecar === null || serviceStatus.ollama === null;
 
   console.log(
     "LOOKING 4 THE PLOT in THE INSPEXTOR???, makes sense but i dont think u'll find it here",
     events,
     currentConfig,
     import.meta.env.VITE_API_URL,
+    servicesReady,
   );
 
   const goToSlide = useCallback((index) => {
@@ -59,6 +90,9 @@ export default function App() {
             currentConfig={currentConfig}
             onGoToStory={() => goToSlide(2)}
             isActive={activeIndex === 0}
+            servicesReady={servicesReady}
+            servicesChecking={servicesChecking}
+            serviceStatus={serviceStatus}
           />
         </SwiperSlide>
         <SwiperSlide>

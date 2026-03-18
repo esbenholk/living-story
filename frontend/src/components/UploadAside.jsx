@@ -132,6 +132,9 @@ export default function UploadAside({
   currentDay,
   currentConfig,
   onGoToStory,
+  servicesReady,
+  servicesChecking,
+  serviceStatus,
 }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -217,8 +220,7 @@ export default function UploadAside({
   const busy = status === "analysing" || status === "uploading";
   const isDone = status === "done";
   const isUploading = status === "uploading" || status === "analysing";
-  const canSubmit = file && selectedTag && !busy && !isDone;
-
+  const canSubmit = file && selectedTag && !busy && !isDone && servicesReady;
   // ── Ticker text & colour based on status ────────────────────────────────
   const tickerText = isUploading
     ? {
@@ -297,87 +299,135 @@ export default function UploadAside({
       </div>
 
       {/* Drop zone */}
-      <div
-        onClick={() => !busy && !isDone && inputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
-        }}
-        style={{
-          width: "100%",
-          maxWidth: 320,
-          aspectRatio: "1",
-          border: `${dragging ? "2px dashed var(--red)" : previewSrc ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
-          borderRadius: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: busy || isDone ? "default" : "pointer",
-          transition: "border-color 0.2s",
-          background:
-            isDone && cutoutUrl
-              ? "var(--red)"
-              : isUploading
-                ? `linear-gradient(to top, var(--red) ${progress}%, transparent ${progress}%)`
-                : "none",
-          backgroundImage: previewSrc ? "none" : "url('placeholder.gif')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}
-      >
-        {previewSrc ? (
-          <img
-            src={previewSrc}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: isDone && cutoutUrl ? "contain" : "cover",
-              // Oscillate opacity while uploading
-              animation: isUploading
-                ? "preview-pulse 2.6s ease-in-out infinite"
-                : "none",
-              transition: "opacity 0.3s",
-              background: isDone && cutoutUrl ? "transparent" : undefined,
-            }}
-            alt="preview"
-          />
-        ) : (
-          <div
-            style={{
-              textAlign: "center",
-              padding: 20,
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+      {!servicesReady ? (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 320,
+            aspectRatio: "1",
+            border: `${dragging ? "2px dashed var(--red)" : previewSrc ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+            borderRadius: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: busy || isDone ? "default" : "pointer",
+            transition: "border-color 0.2s",
+            backgroundImage: "url('placeholder.gif')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          {servicesChecking ? (
+            "Checking services..."
+          ) : (
             <div
               style={{
-                fontSize: 13,
-                color: "var(--highlight)",
-                background: "rgba(0,0,0,1)",
-                padding: "4px 12px",
+                backgroundColor: "var(--blue)",
+                margin: "var(--borderwidth",
+                padding: "var(--borderwidth)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignContent: "center",
+                alignItems: "center",
+                textAlign: "center",
               }}
             >
-              Tap to submit a memory
+              <p>excuse the inconvenience:</p>
+              <p>slop plot temporarily down</p>
+              <p>{!serviceStatus.sidecar && "· Sidecar offline ·"}</p>
+              <p>{!serviceStatus.ollama && "· Ollama offline ·"}</p>
+              <p>Services unavailable</p>
             </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div
+            onClick={() => !busy && !isDone && inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
+            }}
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              aspectRatio: "1",
+              border: `${dragging ? "2px dashed var(--red)" : previewSrc ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+              borderRadius: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: busy || isDone ? "default" : "pointer",
+              transition: "border-color 0.2s",
+              background:
+                isDone && cutoutUrl
+                  ? "var(--red)"
+                  : isUploading
+                    ? `linear-gradient(to top, var(--red) ${progress}%, transparent ${progress}%)`
+                    : "none",
+              backgroundImage: previewSrc ? "none" : "url('placeholder.gif')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {previewSrc ? (
+              <img
+                src={previewSrc}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: isDone && cutoutUrl ? "contain" : "cover",
+                  // Oscillate opacity while uploading
+                  animation: isUploading
+                    ? "preview-pulse 2.6s ease-in-out infinite"
+                    : "none",
+                  transition: "opacity 0.3s",
+                  background: isDone && cutoutUrl ? "transparent" : undefined,
+                }}
+                alt="preview"
+              />
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 20,
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--highlight)",
+                    background: "rgba(0,0,0,1)",
+                    padding: "4px 12px",
+                  }}
+                >
+                  Tap to submit a memory
+                </div>
+              </div>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={(e) => handleFile(e.target.files[0])}
+            />
           </div>
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ display: "none" }}
-          onChange={(e) => handleFile(e.target.files[0])}
-        />
-      </div>
+        </>
+      )}
 
       {/* ── Tag selector ─────────────────────────────────────────────── */}
       <div style={{ width: "100%", maxWidth: "calc(100%)", marginTop: 20 }}>
