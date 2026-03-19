@@ -11,18 +11,33 @@ import healthRouter from "./routes/health.js";
 const app = express();
 const httpServer = createServer(app);
 
-export const io = new Server(httpServer, {
-  cors: { origin: process.env.CLIENT_ORIGIN, methods: ["GET", "POST"] },
+const allowedOrigins = [
+  "https://slopplot.online",
+  "https://www.slopplot.online",
+  "https://living-story-frontend.vercel.app",
+  "http://localhost:5173", // local dev
+  process.env.CLIENT_ORIGIN,
+];
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  },
 });
-cors({
-  origin: [
-    "https://slopplot.online",
-    "https://www.slopplot.online",
-    "https://living-story-frontend.vercel.app",
-    "https://www.living-story-frontend.vercel.app",
-  ],
-});
-app.use(cors({ origin: process.env.CLIENT_ORIGIN }));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 app.use("/api", uploadRouter);
