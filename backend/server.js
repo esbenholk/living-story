@@ -8,9 +8,6 @@ import storyRouter from "./routes/story.js";
 import eventsRouter from "./routes/events.js";
 import healthRouter from "./routes/health.js";
 
-const app = express();
-const httpServer = createServer(app);
-
 const allowedOrigins = [
   "https://slopplot.online",
   "https://www.slopplot.online",
@@ -19,7 +16,10 @@ const allowedOrigins = [
   process.env.CLIENT_ORIGIN,
 ];
 
-const io = new Server(server, {
+const app = express();
+const httpServer = createServer(app);
+
+export const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     credentials: true,
