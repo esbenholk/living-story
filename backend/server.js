@@ -14,7 +14,14 @@ const httpServer = createServer(app);
 export const io = new Server(httpServer, {
   cors: { origin: process.env.CLIENT_ORIGIN, methods: ["GET", "POST"] },
 });
-
+cors({
+  origin: [
+    "https://slopplot.online",
+    "https://www.slopplot.online",
+    "https://living-story-frontend.vercel.app",
+    "https://www.living-story-frontend.vercel.app",
+  ],
+});
 app.use(cors({ origin: process.env.CLIENT_ORIGIN }));
 app.use(express.json());
 
