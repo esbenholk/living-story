@@ -181,3 +181,46 @@ Write only the paragraph. No title, no heading, no commentary.`;
 
   return ollamaGenerate({ model: "mistral", prompt });
 }
+
+
+
+export async function generateStoryOutput({ config, storySoFar, analysis }) {
+  const { descriptionLong, descriptionShort, tags, colours, heroTag } =
+    analysis;
+  const desc = descriptionLong || descriptionShort || tags?.join(", ") || "";
+
+  const prompt = `You are the narrator of a live 8-day story installation.
+
+Story so far:
+${storySoFar || "This is the first chapter."}
+
+Today's theme: ${config.prompt}
+Hero archetype: ${heroTag?.label || "unknown"} — ${heroTag?.names || ""}
+Image: ${desc}
+
+Write a response in exactly this format with no extra text:
+
+HEADLINE: [4-8 words, vivid present-tense caption, no punctuation at end]
+CHAPTER: [2-4 evocative sentences continuing the story, weaving in the image and archetype]`;
+
+  const res = await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "mistral", prompt, stream: false }),
+  });
+
+  if (!res.ok) throw new Error(`Ollama failed: ${res.status}`);
+  const data = await res.json();
+  const raw = (data.response || "").trim();
+
+  // Parse the two sections
+  const headlineMatch = raw.match(/HEADLINE:\s*(.+)/i);
+  const chapterMatch = raw.match(/CHAPTER:\s*([\s\S]+)/i);
+
+  const headline = headlineMatch
+    ? headlineMatch[1].trim().replace(/^["']|["']$/g, "")
+    : null;
+  const chapter = chapterMatch ? chapterMatch[1].trim() : raw;
+
+  return { headline, chapter };
+}

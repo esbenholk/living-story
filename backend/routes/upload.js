@@ -6,6 +6,7 @@ import {
   describeImageShort,
   describeImageLong,
   generateChapter,
+  generateStoryOutput,
 } from "../services/llm.service.js";
 import { assembleStory } from "../services/story.service.js";
 import { getCurrentDay, getChapterConfig } from "../services/day.service.js";
@@ -99,11 +100,20 @@ router.post("/upload", upload, async (req, res) => {
     };
 
     let chapterText = null;
+    let headlineText = null;
     let llmFailed = false;
     try {
-      chapterText = await generateChapter({ config, storySoFar, analysis });
+      const output = await generateStoryOutput({
+        config,
+        storySoFar,
+        analysis,
+      });
+      chapterText = output.chapter;
+      headlineText = output.headline;
+
+      console.log("invention", chapterText, headlineText);
     } catch (e) {
-      console.warn("[UPLOAD] LLM chapter generation unavailable:", e.message);
+      console.warn("[UPLOAD] LLM generation unavailable:", e.message);
       llmFailed = true;
     }
 
@@ -113,7 +123,7 @@ router.post("/upload", upload, async (req, res) => {
       description_short: descriptionShort || "",
       description_long: descriptionLong || "",
       chapter: chapterText || "",
-      headline: config.headline,
+      headline: headlineText ? headlineText : config.headline,
       day: String(day),
       uploader: uploaderName || "",
       hero_tag: heroTag.id,
@@ -137,7 +147,11 @@ router.post("/upload", upload, async (req, res) => {
         },
         uploaderName,
         chapter: {
-          create: { day, headline: config.headline, text: chapterText },
+          create: {
+            day,
+            headline: headlineText ? headlineText : config.headline,
+            text: chapterText,
+          },
         },
       },
       include: { chapter: true },
@@ -146,7 +160,7 @@ router.post("/upload", upload, async (req, res) => {
     // 7. Broadcast
     const payload = {
       day,
-      headline: config.headline,
+      headline: headlineText ? headlineText : config.headline,
       cloudinaryUrl: secure_url,
       cutouts,
       analysis: { tags, colours, descriptionShort, descriptionLong, heroTag },
