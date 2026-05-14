@@ -87,13 +87,13 @@ export function createPublicBot(token) {
         .join(" and ");
       await bot.sendMessage(
         chatId,
-        `⚠️ Sorry for the inconvenience — the system is currently down.
+        `⚠️ Sorry babe, the Slop Plot Bot is currently brokenhearted.  
 
 ` +
           `_${issues} ${issues.includes("and") ? "are" : "is"} not responding._
 
 ` +
-          `Please try again in a few minutes.`,
+          `Plz try again later thoo. thnx uuuuu`,
         { parse_mode: "Markdown", reply_markup: mainKeyboard() },
       );
       return;
