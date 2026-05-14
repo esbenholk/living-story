@@ -19,6 +19,7 @@ import {
   getCurrentDay,
   getChapterConfig,
   HERO_TAGS,
+  checkServicesReady,
 } from "./botUtils.js";
 
 // ── Tag emoji map ─────────────────────────────────────────────────────────
@@ -75,6 +76,29 @@ export function createPublicBot(token) {
     const s = session(chatId);
     const day = getCurrentDay();
 
+    // ── Service check — runs before anything else ─────────────────────────
+    const status = await checkServicesReady();
+    if (!status.ready) {
+      const issues = [
+        !status.sidecar && "image processing",
+        !status.ollama && "story generation",
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      await bot.sendMessage(
+        chatId,
+        `⚠️ Sorry for the inconvenience — the system is currently down.
+
+` +
+          `_${issues} ${issues.includes("and") ? "are" : "is"} not responding._
+
+` +
+          `Please try again in a few minutes.`,
+        { parse_mode: "Markdown", reply_markup: mainKeyboard() },
+      );
+      return;
+    }
+
     // ── Photo received ────────────────────────────────────────────────────
     if (msg.photo) {
       s.pendingPhoto = msg.photo[msg.photo.length - 1];
@@ -82,7 +106,7 @@ export function createPublicBot(token) {
 
       await bot.sendMessage(
         chatId,
-        "📸 The Slop Plot Machine has your Memory!\n\ntag it to make it a part of the Saga",
+        "📸 Got your photo!\n\nWhich role does this memory play in the story?",
         { reply_markup: tagKeyboard() },
       );
       return;
@@ -113,8 +137,6 @@ export function createPublicBot(token) {
 
           // Switch to "sending photo" indicator
           await bot.sendChatAction(chatId, "upload_photo");
-
-          console.log(result);
 
           // Build caption from chapter data
           const headline = result?.headline || TAG_EMOJI[tag.id];
