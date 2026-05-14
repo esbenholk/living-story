@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "install:all": "yarn install && cd backend && yarn install && cd ../frontend && yarn install",
-    "start": "concurrently --names \"BACKEND,FRONTEND,SIDECAR\" --prefix-colors \"blue,green,magenta\" \"yarn start:backend\" \"yarn start:frontend\" \"yarn start:sidecar\"",
-    "start:backend": "cd backend && yarn dev",
-    "start:frontend": "cd frontend && yarn dev",
-    "start:sidecar": "cd sidecar && python app.py"
+    "install:all": "yarn install && yarn --cwd backend install && yarn --cwd frontend install",
+    "dev": "concurrently --names \"BACKEND,FRONTEND,SIDECAR\" --prefix-colors \"blue,green,magenta\" \"yarn --cwd backend dev\" \"yarn --cwd frontend dev\" \"yarn dev:sidecar\"",
+    "dev:sidecar": "cd sidecar && python app.py",
+    "start:backend": "yarn --cwd backend dev",
+    "start:frontend": "yarn --cwd frontend dev"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
   }
 }

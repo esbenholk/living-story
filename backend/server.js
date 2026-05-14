@@ -8,6 +8,8 @@ import storyRouter from "./routes/story.js";
 import eventsRouter from "./routes/events.js";
 import healthRouter from "./routes/health.js";
 
+import { initAllBots } from "./telegram/index.js";
+
 const allowedOrigins = [
   "https://slopplot.online",
   "https://www.slopplot.online",
@@ -53,6 +55,9 @@ app.use("/api", eventsRouter);
 
 // in the app.use() section:
 app.use("/api/health", healthRouter);
+
+//chatbots
+initAllBots(app);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);

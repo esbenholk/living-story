@@ -3,7 +3,10 @@ echo.
 echo  LIVING STORY — starting local services
 echo  =======================================
 echo.
-
+:: start-local.bat
+:: Run this when the backend is deployed on Railway.
+:: Starts ollama + sidecar + ngrok so Railway can reach them via fixed domains.
+:: For local development, use: yarn dev
 :: ── Check Docker is running ───────────────────────────────────────────────
 docker info >nul 2>&1
 if errorlevel 1 (
