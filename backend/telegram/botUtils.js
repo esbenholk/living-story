@@ -27,6 +27,9 @@ export async function uploadTelegramPhoto({
   heroTagId,
   caption,
 }) {
+  const status = await checkServicesReady();
+  if (!status.ready) throw new Error(serviceDownMessage(status));
+
   const token = bot.token;
   const fileInfo = await bot.getFile(photo.file_id);
   const fileUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.file_path}`;
@@ -81,6 +84,34 @@ export async function getLastEvents(limit = 10) {
     take: limit,
     include: { chapter: true },
   });
+}
+
+export async function checkServicesReady() {
+  const base = process.env.SELF_URL || "http://localhost:3001";
+  try {
+    const [sidecar, ollama] = await Promise.all([
+      fetch(`${base}/api/health/sidecar`)
+        .then((r) => r.ok)
+        .catch(() => false),
+      fetch(`${base}/api/health/ollama`)
+        .then((r) => r.ok)
+        .catch(() => false),
+    ]);
+    return { ready: sidecar && ollama, sidecar, ollama };
+  } catch {
+    return { ready: false, sidecar: false, ollama: false };
+  }
+}
+
+export function serviceDownMessage({ sidecar, ollama }) {
+  const issues = [!sidecar && "image processing", !ollama && "story generation"]
+    .filter(Boolean)
+    .join(" and ");
+  return (
+    `⚠️ The story system is currently offline.\n\n` +
+    `${issues} ${issues.includes("and") ? "are" : "is"} not responding.\n\n` +
+    `Please try again in a few minutes.`
+  );
 }
 
 // ── Hero tag helpers ──────────────────────────────────────────────────────

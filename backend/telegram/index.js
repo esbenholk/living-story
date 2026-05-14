@@ -30,6 +30,8 @@ import { createPersonalBot } from "./personalBot.js";
 import { createGroupBot } from "./groupBot.js";
 import { createMasterBot } from "./masterBot.js";
 
+import { checkServicesReady, serviceDownMessage } from "./botUtils.js";
+
 const HERO_TAGS_ENV = [
   { id: "hero", env: "TELEGRAM_BOT_HERO" },
   { id: "quest", env: "TELEGRAM_BOT_QUEST" },
@@ -48,6 +50,13 @@ function validToken(envVar) {
 
 export function initAllBots(app) {
   const bots = [];
+
+  console.log("[Telegram] Tokens found:", {
+    public: !!process.env.TELEGRAM_PUBLIC_BOT_TOKEN?.trim(),
+    group: !!process.env.TELEGRAM_GROUP_BOT_TOKEN?.trim(),
+    master: !!process.env.TELEGRAM_MASTER_BOT_TOKEN?.trim(),
+    hero: !!process.env.TELEGRAM_BOT_HERO?.trim(),
+  });
 
   // ── Public bot ────────────────────────────────────────────────────────
   if (validToken("TELEGRAM_PUBLIC_BOT_TOKEN"))
