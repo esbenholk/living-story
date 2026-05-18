@@ -12,6 +12,15 @@ const panelLabels = ["SUBMIT", "THE PLOT", "THE SAGA"];
 
 const HEALTH_INTERVAL = 30_000;
 
+function getTagFromUrl() {
+  const path = window.location.pathname.replace("/", "").toLowerCase().trim();
+  const param = new URLSearchParams(window.location.search)
+    .get("tag")
+    ?.toLowerCase()
+    .trim();
+  return param || path || null;
+}
+
 export default function App() {
   const { events, chapters, currentDay, currentConfig, addEvent } = useStory();
   useSocket(addEvent);
@@ -26,6 +35,8 @@ export default function App() {
   });
 
   const base = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+  const urlTag = getTagFromUrl();
 
   useEffect(() => {
     const run = async () => {
@@ -94,6 +105,7 @@ export default function App() {
             servicesReady={servicesReady}
             servicesChecking={servicesChecking}
             serviceStatus={serviceStatus}
+            defaultHeroTagId={urlTag}
           />
         </SwiperSlide>
         <SwiperSlide>

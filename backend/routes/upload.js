@@ -35,6 +35,7 @@ router.post("/upload", upload, async (req, res) => {
     io.emit("pipeline_start");
 
     const day = getCurrentDay();
+
     const config = getChapterConfig(day);
     const uploaderName = req.body.uploaderName || null;
 

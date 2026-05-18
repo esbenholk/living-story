@@ -135,6 +135,7 @@ export default function UploadAside({
   servicesReady,
   servicesChecking,
   serviceStatus,
+  defaultHeroTagId,
 }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -143,15 +144,23 @@ export default function UploadAside({
   const [status, setStatus] = useState("idle"); // idle | analysing | uploading | done
   const [dragging, setDragging] = useState(false);
   const [name, setName] = useState("");
-  const [selectedTag, setSelectedTag] = useState(null);
-  const [userHasChosen, setUserHasChosen] = useState(false);
+  const [selectedTag, setSelectedTag] = useState(
+    defaultHeroTagId
+      ? (HERO_TAGS.find((t) => t.id === defaultHeroTagId) ?? null)
+      : null,
+  );
+  const [userHasChosen, setUserHasChosen] = useState(!!defaultHeroTagId);
   const inputRef = useRef();
   const doneTimer = useRef(null);
+
+  console.log(defaultHeroTagId);
 
   // Sync default tag once currentDay resolves
   useEffect(() => {
     if (currentDay && !userHasChosen)
       setSelectedTag(defaultTagForDay(currentDay));
+    else if (defaultHeroTagId)
+      setSelectedTag(HERO_TAGS.find((t) => t.id === defaultHeroTagId) ?? null);
   }, [currentDay, userHasChosen]);
 
   // Clean up done-state timer on unmount
