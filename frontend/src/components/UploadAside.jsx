@@ -519,6 +519,7 @@ export default function UploadAside({
                     }}
                   >
                     {tag.day}
+                    {tag.id}
                   </span>
                 </div>
               </button>
