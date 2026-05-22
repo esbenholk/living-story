@@ -15,34 +15,34 @@
 
 export const HERO_TAGS = [
   {
-    id: "hero",
+    id: "avatar",
     day: 1,
-    label: "The Hero",
+    label: "THE MAIN CHARACTER",
     names: "The Avatar / The Main Character / The Self / The Hero",
     prompt:
       "This chapter introduces or re-centres the protagonist. Focus on identity, presence, and the inner world of the self. Who are they? What do they carry? Write from a place of embodied selfhood.",
     svg: "tag-hero.svg",
   },
   {
-    id: "quest",
+    id: "que",
     day: 2,
-    label: "The Quest",
+    label: "THE QUEST",
     names: "The Quest / The Disruption / The Call",
     prompt:
       "Something shifts. A threshold is crossed or beckons. Focus on the moment of rupture — the call that cannot be ignored, the world tilting on its axis. Write with restless forward energy.",
     svg: "tag-quest.svg",
   },
   {
-    id: "mentor",
+    id: "npc",
     day: 3,
-    label: "The Mentor",
+    label: "The Non Playable Characters",
     names: "The NPC / The Mentor / The Sidekick",
     prompt:
       "Another presence enters — a guide, a companion, a stranger who knows more than they should. Focus on connection, exchange, and the gift of being witnessed. Write with warmth and subtle mystery.",
     svg: "tag-mentor.svg",
   },
   {
-    id: "challenge",
+    id: "obsticalus",
     day: 4,
     label: "The Challenge",
     names: "The Challenge / The Obstacle",
@@ -51,7 +51,7 @@ export const HERO_TAGS = [
     svg: "tag-challenge.svg",
   },
   {
-    id: "abyss",
+    id: "abby",
     day: 5,
     label: "The Abyss",
     names: "The Abyss / The Dark / The Unknown / The Loss of Faith",
@@ -60,16 +60,16 @@ export const HERO_TAGS = [
     svg: "tag-abyss.svg",
   },
   {
-    id: "villain",
+    id: "ratava",
     day: 6,
-    label: "The Villain",
+    label: "IN THEIR VILLAIN ERA",
     names: "The Villain (Era) / The Anti-Self / The Anti-Hero",
     prompt:
       "The shadow rises — within or without. This is the confrontation with the force that opposes growth. Focus on the seductive logic of the anti-self. Write with dangerous clarity.",
     svg: "tag-villain.svg",
   },
   {
-    id: "transformation",
+    id: "morph",
     day: 7,
     label: "The Transformation",
     names: "The Transformation",
@@ -78,9 +78,9 @@ export const HERO_TAGS = [
     svg: "tag-transformation.svg",
   },
   {
-    id: "reward",
+    id: "dulapip",
     day: 8,
-    label: "The Reward",
+    label: "THE REWARD",
     names: "The Reward",
     prompt:
       "The journey completes its arc. What has been earned, understood, or accepted? Focus on arrival, integration, and the bittersweet taste of having changed. Write with earned stillness.",
