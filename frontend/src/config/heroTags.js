@@ -24,7 +24,7 @@ export const HERO_TAGS = [
     svg: "avatar.svg",
   },
   {
-    id: "que",
+    id: "quest",
     day: 2,
     label: "THE QUEST",
     names: "The Quest / The Disruption / The Call",
@@ -42,7 +42,7 @@ export const HERO_TAGS = [
     svg: "npc.svg",
   },
   {
-    id: "obsticalus",
+    id: "challenge",
     day: 4,
     label: "The Challenge",
     names: "The Challenge / The Obstacle",
