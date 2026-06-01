@@ -122,8 +122,8 @@ export function createGroupBot(token) {
       { reply_to_message_id: msg.message_id, reply_markup: tagKeyboard() });
   });
 
-  bot.on("polling_error", err =>
-    console.error("[GroupBot] Polling error:", err.message));
+  // bot.on("polling_error", err =>
+  //   console.error("[GroupBot] Polling error:", err.message));
 
   console.log("[GroupBot] Ready — listening for group photos.");
   return bot;

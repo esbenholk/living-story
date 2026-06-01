@@ -234,9 +234,9 @@ ${chapter.text || ""}`,
     );
   });
 
-  bot.on("polling_error", (err) =>
-    console.error("[PublicBot] Polling error:", err.message),
-  );
+  // bot.on("polling_error", (err) =>
+  //   console.error("[PublicBot] Polling error:", err.message),
+  // );
 
   console.log("[PublicBot] Ready.");
   return bot;

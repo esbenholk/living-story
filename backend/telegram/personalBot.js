@@ -99,8 +99,8 @@ export function createPersonalBot(token, heroTagId) {
       { parse_mode: "Markdown", reply_markup: mainMenuKeyboard() });
   });
 
-  bot.on("polling_error", err =>
-    console.error(`[PersonalBot:${heroTagId}] Polling error:`, err.message));
+  // bot.on("polling_error", err =>
+  //   console.error(`[PersonalBot:${heroTagId}] Polling error:`, err.message));
 
   console.log(`[PersonalBot:${heroTagId}] Ready.`);
   return bot;

@@ -1,14 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 let socket;
 
 export function useSocket(onNewChapter) {
+  const onNewChapterRef = useRef(onNewChapter);
+
+  useEffect(() => {
+    onNewChapterRef.current = onNewChapter;
+  }, [onNewChapter]);
+
   useEffect(() => {
     socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001');
 
     socket.on('new_chapter', (data) => {
-      onNewChapter(data);
+      onNewChapterRef.current(data);
     });
 
     socket.on('pipeline_error', (data) => {

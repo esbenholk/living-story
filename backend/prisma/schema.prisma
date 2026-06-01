@@ -29,3 +29,45 @@ model Chapter {
   uploadEvent   UploadEvent @relation(fields: [uploadEventId], references: [id])
   createdAt     DateTime    @default(now())
 }
+
+
+model StoryState {
+  id        String   @id @default("singleton") // only one row ever exists
+  updatedAt DateTime @updatedAt
+
+  // ── Omni-Alice ──────────────────────────────────────────────────────────
+  aliceTraits      String[] // personality traits discovered through Hero images
+  aliceExperiences String[] // things Alice has been through
+  aliceAppearance  String?  // physical description built from images
+
+  // ── The Villain ─────────────────────────────────────────────────────────
+  villainTraits      String[]
+  villainExperiences String[]
+  villainAppearance  String?
+  villainName        String?
+
+  // ── NPCs ────────────────────────────────────────────────────────────────
+  // JSON array of { id, name, traits, role, allegiance: "ally"|"enemy"|"neutral", active }
+  npcs Json @default("[]")
+
+  // ── Quests / sidequests ──────────────────────────────────────────────────
+  // JSON array of { id, description, status: "open"|"closed", openedAt, closedAt }
+  quests Json @default("[]")
+
+  // ── Challenges ──────────────────────────────────────────────────────────
+  // JSON array of { id, description, status: "open"|"resolved", openedAt }
+  challenges Json @default("[]")
+
+  // ── Beliefs / truths (can be inverted by Abyss) ─────────────────────────
+  // JSON array of { statement, inverted: bool }
+  beliefs Json @default("[]")
+
+  // ── Storyline threads ────────────────────────────────────────────────────
+  // JSON array of { id, description, status: "active"|"resolved"|"abandoned" }
+  threads Json @default("[]")
+
+  // ── Grand arc ────────────────────────────────────────────────────────────
+  grandArcDay     Int    @default(1) // 1-8, current position in hero's journey
+  chaptersWritten Int    @default(0)
+  lastSummary     String? // rolling summary of the story so far (compressed)
+}

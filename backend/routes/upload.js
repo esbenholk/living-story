@@ -8,7 +8,7 @@ import {
   generateChapter,
   generateStoryOutput,
 } from "../services/llm.service.js";
-import { assembleStory } from "../services/story.service.js";
+import { loadState, saveState, applyUpdates } from "../services/story.state.service.js";
 import { getCurrentDay, getChapterConfig } from "../services/day.service.js";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -24,45 +24,40 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
 }).fields([
-  { name: "image", maxCount: 1 },
-  { name: "left_eye", maxCount: 1 },
+  { name: "image",     maxCount: 1 },
+  { name: "left_eye",  maxCount: 1 },
   { name: "right_eye", maxCount: 1 },
-  { name: "mouth", maxCount: 1 },
+  { name: "mouth",     maxCount: 1 },
 ]);
 
 router.post("/upload", upload, async (req, res) => {
   try {
     io.emit("pipeline_start");
 
-    const day = getCurrentDay();
-
-    const config = getChapterConfig(day);
+    const day          = getCurrentDay();
+    const config       = getChapterConfig(day);
     const uploaderName = req.body.uploaderName || null;
 
-    // Resolve hero tag — use what the user picked, fall back to day default
+    // Resolve hero tag
     const heroTagId = req.body.heroTagId || null;
-    const heroTag =
-      HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(day);
-    console.log(
-      `[UPLOAD] heroTag: ${heroTag.id} (${heroTag.label}), day: ${day}`,
-    );
+    const heroTag   = HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(day);
+    console.log(`[UPLOAD] heroTag: ${heroTag.id} (${heroTag.label}), day: ${day}`);
 
     const imageFile = req.files?.image?.[0];
     if (!imageFile) return res.status(400).json({ error: "image required" });
 
     const faceCropFiles = {
-      left_eye: req.files?.left_eye?.[0] ?? null,
+      left_eye:  req.files?.left_eye?.[0]  ?? null,
       right_eye: req.files?.right_eye?.[0] ?? null,
-      mouth: req.files?.mouth?.[0] ?? null,
+      mouth:     req.files?.mouth?.[0]     ?? null,
     };
 
     // 1. Upload original to Cloudinary
-    const filename = `upload_${Date.now()}`;
+    const filename    = `upload_${Date.now()}`;
     const cloudResult = await uploadImage(imageFile.buffer, filename);
     const { secure_url, colors } = cloudResult;
-    const tags = (cloudResult.tags || []).map((t) => t.tag || t).slice(0, 10);
-    const colours =
-      colors?.predominant?.google || colors?.predominant?.cloudinary || [];
+    const tags    = (cloudResult.tags || []).map((t) => t.tag || t).slice(0, 10);
+    const colours = colors?.predominant?.google || colors?.predominant?.cloudinary || [];
 
     // 2. Sidecar: subject cutout + face crop uploads
     let cutouts = {};
@@ -77,10 +72,9 @@ router.post("/upload", upload, async (req, res) => {
       cutouts = { subject: null };
     }
 
-    // 3. LLaVA descriptions — run in parallel (both hit the same model sequentially
-    //    inside Ollama, but the fetch overhead overlaps)
+    // 3. LLaVA descriptions — run in parallel
     let descriptionShort = null;
-    let descriptionLong = null;
+    let descriptionLong  = null;
     try {
       [descriptionShort, descriptionLong] = await Promise.all([
         describeImageShort(secure_url).catch(() => null),
@@ -90,47 +84,45 @@ router.post("/upload", upload, async (req, res) => {
       console.warn("[UPLOAD] LLaVA descriptions failed:", e.message);
     }
 
-    // 4. Generate chapter — pass heroTag so the prompt can use it
-    const storySoFar = await assembleStory();
-    const analysis = {
-      tags,
-      colours,
-      descriptionShort,
-      descriptionLong,
-      heroTag,
-    };
+    // 4. Load world state + generate chapter
+    const state    = await loadState();
+    const analysis = { tags, colours, descriptionShort, descriptionLong, heroTag };
 
-    let chapterText = null;
+    let chapterText  = null;
     let headlineText = null;
-    let llmFailed = false;
-    try {
-      const output = await generateStoryOutput({
-        config,
-        storySoFar,
-        analysis,
-      });
-      chapterText = output.chapter;
-      headlineText = output.headline;
+    let stateUpdates = {};
+    let llmFailed    = false;
 
-      console.log("invention", chapterText, headlineText);
+    try {
+      const output = await generateStoryOutput({ config, analysis, state });
+      chapterText  = output.chapter;
+      headlineText = output.headline;
+      stateUpdates = output.stateUpdates || {};
+      console.log("[UPLOAD] State updates:", stateUpdates);
     } catch (e) {
       console.warn("[UPLOAD] LLM generation unavailable:", e.message);
       llmFailed = true;
+    }
+
+    // 4b. Save state updates
+    if (!llmFailed && Object.keys(stateUpdates).length > 0) {
+      const nextState = applyUpdates(state, stateUpdates);
+      await saveState(nextState).catch((e) =>
+        console.warn("[UPLOAD] State save failed:", e.message));
     }
 
     // 5. Back-fill metadata into Cloudinary
     const publicIds = extractPublicIds(cloudResult, cutouts);
     updateContext(publicIds, {
       description_short: descriptionShort || "",
-      description_long: descriptionLong || "",
-      chapter: chapterText || "",
-      headline: headlineText ? headlineText : config.headline,
-      day: String(day),
-      uploader: uploaderName || "",
-      hero_tag: heroTag.id,
+      description_long:  descriptionLong  || "",
+      chapter:           chapterText      || "",
+      headline:          headlineText     || config.headline,
+      day:               String(day),
+      uploader:          uploaderName     || "",
+      hero_tag:          heroTag.id,
     }).catch((e) =>
-      console.warn("[UPLOAD] Cloudinary context update failed:", e.message),
-    );
+      console.warn("[UPLOAD] Cloudinary context update failed:", e.message));
 
     // 6. Save to DB
     const event = await prisma.uploadEvent.create({
@@ -150,8 +142,8 @@ router.post("/upload", upload, async (req, res) => {
         chapter: {
           create: {
             day,
-            headline: headlineText ? headlineText : config.headline,
-            text: chapterText,
+            headline: headlineText || config.headline,
+            text:     chapterText,
           },
         },
       },
@@ -161,32 +153,24 @@ router.post("/upload", upload, async (req, res) => {
     // 7. Broadcast
     const payload = {
       day,
-      headline: headlineText ? headlineText : config.headline,
+      headline:      headlineText || config.headline,
       cloudinaryUrl: secure_url,
       cutouts,
-      analysis: { tags, colours, descriptionShort, descriptionLong, heroTag },
+      analysis:      { tags, colours, descriptionShort, descriptionLong, heroTag },
       chapterText,
       uploadEventId: event.id,
-      uploaderName: event.uploaderName,
-      timestamp: event.createdAt,
+      uploaderName:  event.uploaderName,
+      timestamp:     event.createdAt,
     };
 
     if (llmFailed) {
-      io.emit("pipeline_error", {
-        uploadEventId: event.id,
-        reason: "LLM_UNAVAILABLE",
-      });
+      io.emit("pipeline_error", { uploadEventId: event.id, reason: "LLM_UNAVAILABLE" });
     } else {
       io.emit("new_chapter", payload);
     }
 
-    res.json({
-      success: true,
-      eventId: event.id,
-      llmFailed,
-      cutouts,
-      descriptionShort,
-    });
+    res.json({ success: true, eventId: event.id, llmFailed, cutouts, descriptionShort });
+
   } catch (err) {
     console.error("[UPLOAD] Pipeline error:", err);
     io.emit("pipeline_error", { reason: err.message });
@@ -197,32 +181,28 @@ router.post("/upload", upload, async (req, res) => {
 router.patch("/chapter/:id/retry", async (req, res) => {
   try {
     const event = await prisma.uploadEvent.findUnique({
-      where: { id: req.params.id },
+      where:   { id: req.params.id },
       include: { chapter: true },
     });
     if (!event) return res.status(404).json({ error: "Not found" });
 
-    const config = getChapterConfig(event.day);
-    const storySoFar = await assembleStory();
+    const config    = getChapterConfig(event.day);
     const heroTagId = event.analysisRaw?.heroTagId || null;
-    const heroTag =
-      HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(event.day);
-    const analysis = {
-      tags: event.tags,
-      colours: event.colours,
-      descriptionLong:
-        event.analysisRaw?.descriptionLong ||
-        event.analysisRaw?.description ||
-        null,
+    const heroTag   = HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(event.day);
+    const analysis  = {
+      tags:             event.tags,
+      colours:          event.colours,
+      descriptionLong:  event.analysisRaw?.descriptionLong  || event.analysisRaw?.description || null,
       descriptionShort: event.analysisRaw?.descriptionShort || null,
       heroTag,
     };
 
-    const chapterText = await generateChapter({ config, storySoFar, analysis });
+    // generateChapter loads state and saves updates internally
+    const chapterText = await generateChapter({ config, analysis });
 
     await prisma.chapter.update({
       where: { uploadEventId: event.id },
-      data: { text: chapterText },
+      data:  { text: chapterText },
     });
 
     const publicIds = extractPublicIds(
@@ -230,18 +210,17 @@ router.patch("/chapter/:id/retry", async (req, res) => {
       event.cutouts,
     );
     updateContext(publicIds, { chapter: chapterText }).catch((e) =>
-      console.warn("[RETRY] Cloudinary context update failed:", e.message),
-    );
+      console.warn("[RETRY] Cloudinary context update failed:", e.message));
 
     io.emit("new_chapter", {
-      day: event.day,
-      headline: config.headline,
+      day:           event.day,
+      headline:      config.headline,
       cloudinaryUrl: event.cloudinaryUrl,
-      cutouts: event.cutouts,
+      cutouts:       event.cutouts,
       analysis,
       chapterText,
       uploadEventId: event.id,
-      timestamp: event.createdAt,
+      timestamp:     event.createdAt,
     });
 
     res.json({ success: true, chapterText });

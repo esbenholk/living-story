@@ -38,7 +38,16 @@ export function createMasterBot(token) {
           await prisma.chapter.deleteMany({ where: { uploadEventId: eventId } });
           await prisma.uploadEvent.delete({ where: { id: eventId } });
           photoEventMap.delete(fileUniqueId);
+                    // After successful delete:
+          await prisma.chapter.deleteMany({ where: { uploadEventId: eventId } });
+          await prisma.uploadEvent.delete({ where: { id: eventId } });
+          photoEventMap.delete(fileUniqueId);
+
+          io.emit("delete_event", { uploadEventId: eventId });
           await bot.sendMessage(chatId, `🗑️ Deleted event ${eventId}.`);
+
+
+
         } catch (e) {
           await bot.sendMessage(chatId, `❌ Delete failed: ${e.message}`);
         }
@@ -180,8 +189,8 @@ export function createMasterBot(token) {
       { parse_mode: "Markdown" });
   });
 
-  bot.on("polling_error", err =>
-    console.error("[MasterBot] Polling error:", err.message));
+  // bot.on("polling_error", err =>
+  //   console.error("[MasterBot] Polling error:", err.message));
 
   console.log("[MasterBot] Ready.");
   return bot;
