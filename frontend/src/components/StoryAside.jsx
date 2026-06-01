@@ -5,10 +5,11 @@ export default function StoryAside({ chapters, currentDay, isActive }) {
 
   // Only scroll to current day when this slide becomes active (user swipes to it)
   useEffect(() => {
-    if (isActive && currentRef.current) {
-      currentRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      console.log("story is active");
-    }
+    if (!isActive || !currentRef.current) return;
+    const timer = setTimeout(() => {
+      currentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 400); // matches Swiper's default transition duration
+    return () => clearTimeout(timer);
   }, [isActive]);
 
   if (!chapters.length) {

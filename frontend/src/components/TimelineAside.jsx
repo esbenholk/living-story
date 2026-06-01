@@ -90,13 +90,14 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   const hasMore = visibleCount < events.length;
 
   useEffect(() => {
-    if (isActive && currentRef.current) {
-      currentRef.current.scrollIntoView({
+    if (!isActive || !scrollRef.current) return;
+    const timer = setTimeout(() => {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
         behavior: "smooth",
-        block: "center",
       });
-    }
-    console.log("timeline", events);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [isActive]);
 
   useEffect(() => {
