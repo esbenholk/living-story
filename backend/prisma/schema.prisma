@@ -70,4 +70,5 @@ model StoryState {
   grandArcDay     Int    @default(1) // 1-8, current position in hero's journey
   chaptersWritten Int    @default(0)
   lastSummary     String? // rolling summary of the story so far (compressed)
+  lastChapter     String? // raw text of the most recent chapter for immediate continuity
 }

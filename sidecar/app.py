@@ -46,18 +46,28 @@ print("Loading rembg model (isnet-general-use)...")
 REMBG_SESSION = new_session("isnet-general-use")
 print("rembg model ready.")
 
-# Alpha pixels below this value snap to fully transparent.
-# 128 keeps confident foreground, drops the soft halo rembg produces.
-ALPHA_THRESHOLD =25
+
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def hard_alpha(img: Image.Image, threshold: int = ALPHA_THRESHOLD) -> Image.Image:
-    """Snap rembg's soft alpha to a hard 0/255 edge."""
+ALPHA_THRESHOLD_HARD = 25    # clean subject found
+ALPHA_THRESHOLD_SOFT = 10    # uncertain/messy subject
+
+def confidence_score(img: Image.Image) -> float:
+    """Returns ratio of confident pixels (near 0 or near 255) to total pixels.
+    High score = clean subject. Low score = rembg is uncertain."""
+    a_np = np.array(img.convert("RGBA").split()[3])
+    confident = np.sum((a_np < 30) | (a_np > 225))
+    return confident / a_np.size
+
+def hard_alpha(img: Image.Image) -> Image.Image:
     img = img.convert("RGBA")
+    score = confidence_score(img)
+    threshold = ALPHA_THRESHOLD_HARD if score > 0.85 else ALPHA_THRESHOLD_SOFT
+    print(f"[REMBG] Confidence score: {score:.2f} — using threshold {threshold}")
     r, g, b, a = img.split()
     a_np = np.array(a)
     a_np = np.where(a_np >= threshold, 255, 0).astype(np.uint8)

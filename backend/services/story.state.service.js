@@ -32,6 +32,7 @@ const DEFAULT_STATE = {
   grandArcDay:       1,
   chaptersWritten:   0,
   lastSummary:       null,
+  lastChapter:       null,
 };
 
 // ── Load ──────────────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ export async function saveState(state) {
       grandArcDay:       state.grandArcDay,
       chaptersWritten:   state.chaptersWritten,
       lastSummary:       state.lastSummary,
+      lastChapter:       state.lastChapter,
     },
   });
 }
@@ -150,10 +152,6 @@ export function applyUpdates(state, updates) {
   }
   next.threads = threads;
 
-  // ── Grand arc ──────────────────────────────────────────────────────────
-  if (updates.grandArcDay)
-    next.grandArcDay = updates.grandArcDay;
-
   // ── Rolling summary ────────────────────────────────────────────────────
   if (updates.summary)
     next.lastSummary = updates.summary;
@@ -170,23 +168,30 @@ export function formatStateForPrompt(state) {
   const arcNames = ["","Hero","Quest","Mentor","Challenge","Abyss","Villain","Transformation","Reward"];
   lines.push(`GRAND ARC: Day ${state.grandArcDay} — ${arcNames[state.grandArcDay] || "Unknown"} (chapter ${state.chaptersWritten + 1})`);
 
-  // Rolling summary
-  if (state.lastSummary)
-    lines.push(`\nSTORY SO FAR:\n${state.lastSummary}`);
+  // Last chapter — immediate narrative continuity
+  if (state.lastChapter)
+    lines.push(`\nLAST CHAPTER (do NOT repeat any of these lines — write what happens NEXT):\n"${state.lastChapter}"\nThe next chapter must move the story forward. New sentence. New moment. New image.`);
 
-  // Alice
+  // Rolling summary — long-term memory
+  if (state.lastSummary)
+    lines.push(`\nSTORY SO FAR (summary):\n${state.lastSummary}`);
+
+  // Alice — compressed to prevent word-bank recycling
   if (state.aliceTraits?.length || state.aliceAppearance) {
-    lines.push(`\nOMNI-ALICE:`);
-    if (state.aliceAppearance) lines.push(`  Appearance: ${state.aliceAppearance}`);
-    if (state.aliceTraits?.length) lines.push(`  Traits: ${state.aliceTraits.join(", ")}`);
-    if (state.aliceExperiences?.length) lines.push(`  Has experienced: ${state.aliceExperiences.join("; ")}`);
+    const traits = state.aliceTraits?.slice(-5).join(", ") || "unknown";
+    const exp    = state.aliceExperiences?.slice(-3).join("; ") || "";
+    lines.push(`\nOMNI-ALICE (context only — do not echo this language in the chapter):`);
+    if (state.aliceAppearance) lines.push(`  Look: ${state.aliceAppearance}`);
+    lines.push(`  Core traits: ${traits}`);
+    if (exp) lines.push(`  Recent: ${exp}`);
   }
 
-  // Villain
+  // Villain — compressed
   if (state.villainTraits?.length || state.villainName) {
-    lines.push(`\nTHE VILLAIN${state.villainName ? ` (${state.villainName})` : ""}:`);
-    if (state.villainAppearance) lines.push(`  Appearance: ${state.villainAppearance}`);
-    if (state.villainTraits?.length) lines.push(`  Traits: ${state.villainTraits.join(", ")}`);
+    const vtraits = state.villainTraits?.slice(-3).join(", ") || "unknown";
+    lines.push(`\nTHE VILLAIN${state.villainName ? ` (${state.villainName})` : ""} (context only — do not echo this language):`);
+    if (state.villainAppearance) lines.push(`  Look: ${state.villainAppearance}`);
+    lines.push(`  Core traits: ${vtraits}`);
   }
 
   // Active NPCs

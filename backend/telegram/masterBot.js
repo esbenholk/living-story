@@ -5,7 +5,6 @@ import {
   getLastEvents, getCurrentDay, getChapterConfig, defaultTagForDay,
   checkServicesReady,
 } from "./botUtils.js";
-import { io } from "../server.js";
 
 export function createMasterBot(token) {
   const MASTER_ID = process.env.TELEGRAM_MASTER_CHAT_ID;
@@ -38,16 +37,7 @@ export function createMasterBot(token) {
           await prisma.chapter.deleteMany({ where: { uploadEventId: eventId } });
           await prisma.uploadEvent.delete({ where: { id: eventId } });
           photoEventMap.delete(fileUniqueId);
-                    // After successful delete:
-          await prisma.chapter.deleteMany({ where: { uploadEventId: eventId } });
-          await prisma.uploadEvent.delete({ where: { id: eventId } });
-          photoEventMap.delete(fileUniqueId);
-
-          io.emit("delete_event", { uploadEventId: eventId });
           await bot.sendMessage(chatId, `🗑️ Deleted event ${eventId}.`);
-
-
-
         } catch (e) {
           await bot.sendMessage(chatId, `❌ Delete failed: ${e.message}`);
         }
@@ -81,8 +71,9 @@ export function createMasterBot(token) {
       if (text.toLowerCase() === "yes") {
         await prisma.chapter.deleteMany();
         await prisma.uploadEvent.deleteMany();
+        await prisma.storyState.deleteMany();
         photoEventMap.clear();
-        await bot.sendMessage(chatId, "✅ All events and chapters deleted.");
+        await bot.sendMessage(chatId, "✅ All events, chapters and story state deleted.");
       } else {
         await bot.sendMessage(chatId, "Reset cancelled.");
       }
@@ -189,8 +180,8 @@ export function createMasterBot(token) {
       { parse_mode: "Markdown" });
   });
 
-  // bot.on("polling_error", err =>
-  //   console.error("[MasterBot] Polling error:", err.message));
+  bot.on("polling_error", err =>
+    console.error("[MasterBot] Polling error:", err.message));
 
   console.log("[MasterBot] Ready.");
   return bot;

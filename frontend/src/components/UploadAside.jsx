@@ -4,7 +4,6 @@ import { useFaceCrops } from "../hooks/useFaceCrops.js";
 import Ticker from "./Ticker.jsx";
 import { HERO_TAGS, defaultTagForDay } from "../config/heroTags.js";
 
-// How long the "done" celebration state lasts before resetting (ms)
 const DONE_DURATION = 50000;
 
 const SLIDE_TICKERS = [
@@ -25,11 +24,6 @@ const SLIDE_TICKERS = [
   },
 ];
 
-// ── Frame animation ────────────────────────────────────────────────────────
-// A single SVG rectangle whose stroke-dashoffset animates to "draw" the frame
-// starting from the bottom-left corner, going up → right → down → left.
-// The perimeter is computed from the viewport at render time via a ResizeObserver.
-// We drive it with a CSS custom property so we don't need JS animation frames.
 const FRAME_CSS = `
 @keyframes frame-draw {
   from { stroke-dashoffset: var(--perimeter); }
@@ -51,10 +45,13 @@ const FRAME_CSS = `
   0%, 100% { color: var(--red); }
   50%       { color: var(--highlight); }
 }
+@keyframes text-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
 `;
 
 function FrameSVG({ phase }) {
-  // phase: "idle" | "uploading" | "done"
   const ref = useRef();
   const [dims, setDims] = useState({ w: 0, h: 0 });
 
@@ -72,18 +69,9 @@ function FrameSVG({ phase }) {
 
   const { w, h } = dims;
   const perimeter = 2 * (w + h);
-  // Inset by half the stroke so it sits just inside the edge
-  const S = 5; // stroke width
-  const x = S / 2,
-    y = S / 2;
-  const rw = w - S,
-    rh = h - S;
-
-  // Start point: bottom-left corner. SVG rect path order:
-  // top-left → top-right → bottom-right → bottom-left → top-left
-  // We need bottom-left as origin. We rotate the dashoffset start by shifting
-  // the starting point using a custom path that begins at bottom-left.
-  // Path: M bottom-left → up to top-left → right to top-right → down to bottom-right → left back to bottom-left
+  const S = 5;
+  const x = S / 2, y = S / 2;
+  const rw = w - S, rh = h - S;
   const d = `M ${x} ${y + rh} L ${x} ${y} L ${x + rw} ${y} L ${x + rw} ${y + rh} L ${x} ${y + rh}`;
 
   const isUploading = phase === "uploading";
@@ -126,8 +114,6 @@ function FrameSVG({ phase }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function UploadAside({
   currentDay,
   currentConfig,
@@ -139,9 +125,8 @@ export default function UploadAside({
 }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [cutoutUrl, setCutoutUrl] = useState(null); // shown after upload completes
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState("idle"); // idle | analysing | uploading | done
+  const [status, setStatus] = useState("idle");
   const [dragging, setDragging] = useState(false);
   const [name, setName] = useState("");
   const [selectedTag, setSelectedTag] = useState(
@@ -153,9 +138,6 @@ export default function UploadAside({
   const inputRef = useRef();
   const doneTimer = useRef(null);
 
-  console.log(defaultHeroTagId);
-
-  // Sync default tag once currentDay resolves
   useEffect(() => {
     if (currentDay && !userHasChosen)
       setSelectedTag(defaultTagForDay(currentDay));
@@ -163,7 +145,6 @@ export default function UploadAside({
       setSelectedTag(HERO_TAGS.find((t) => t.id === defaultHeroTagId) ?? null);
   }, [currentDay, userHasChosen]);
 
-  // Clean up done-state timer on unmount
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
   const { extractCrops } = useFaceCrops();
@@ -172,7 +153,6 @@ export default function UploadAside({
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
-    setCutoutUrl(null);
     setStatus("idle");
     setProgress(0);
   }
@@ -180,22 +160,14 @@ export default function UploadAside({
   function reset() {
     setFile(null);
     setPreview(null);
-    setCutoutUrl(null);
     setProgress(0);
     setStatus("idle");
     setUserHasChosen(false);
-    // Re-apply day default
     if (currentDay) setSelectedTag(defaultTagForDay(currentDay));
   }
 
   async function handleSubmit() {
-    if (
-      !file ||
-      !selectedTag ||
-      status === "uploading" ||
-      status === "analysing"
-    )
-      return;
+    if (!file || !selectedTag || status === "uploading" || status === "analysing") return;
 
     setStatus("analysing");
     let faceCrops = null;
@@ -207,19 +179,11 @@ export default function UploadAside({
 
     setStatus("uploading");
     try {
-      const result = await uploadImage(
+      await uploadImage(
         { file, uploaderName: name, faceCrops, heroTagId: selectedTag.id },
         setProgress,
       );
-      // Grab the subject cutout URL from the pipeline result if available
-
-      console.log("has uploaded", result);
-
-      const subject = result?.cutouts?.subject || null;
-      setCutoutUrl(subject);
       setStatus("done");
-
-      // Auto-reset after DONE_DURATION
       doneTimer.current = setTimeout(reset, DONE_DURATION);
     } catch {
       setStatus("error");
@@ -230,7 +194,7 @@ export default function UploadAside({
   const isDone = status === "done";
   const isUploading = status === "uploading" || status === "analysing";
   const canSubmit = file && selectedTag && !busy && !isDone && servicesReady;
-  // ── Ticker text & colour based on status ────────────────────────────────
+
   const tickerText = isUploading
     ? {
         top: "uploading memory to plot · ",
@@ -239,9 +203,9 @@ export default function UploadAside({
       }
     : isDone
       ? {
-          top: "upload complete · memory added · ",
-          left: "upload complete · memory added · ",
-          right: "upload complete · memory added · ",
+          top: "memory received · stand by · ",
+          left: "the machine is processing · ",
+          right: parseInt(currentDay) > 4 ? "watch the screen · " : "read the saga · ",
         }
       : {
           top: SLIDE_TICKERS[0].top,
@@ -251,9 +215,6 @@ export default function UploadAside({
 
   const tickerColor = isDone ? "var(--highlight)" : "var(--red)";
   const tickerBorderColor = isDone ? "var(--highlight)" : "var(--red)";
-
-  // ── Preview src — switch to cutout on done ───────────────────────────────
-  const previewSrc = isDone && cutoutUrl ? cutoutUrl : preview;
 
   const buttonLabel = (() => {
     if (status === "analysing") return "Analysing...";
@@ -278,10 +239,7 @@ export default function UploadAside({
         gap: 0,
       }}
     >
-      {/* ── Frame animation overlay ─────────────────────────────────── */}
       <FrameSVG phase={isUploading ? "uploading" : isDone ? "done" : "idle"} />
-
-      {/* ── Tickers ─────────────────────────────────────────────────── */}
 
       <Ticker
         position="left"
@@ -302,25 +260,22 @@ export default function UploadAside({
         borderColor={tickerBorderColor}
       />
 
-      {/* Headline */}
       <div>
         <h1>{currentConfig?.headline}</h1>
       </div>
 
-      {/* Drop zone */}
+      {/* ── Drop zone ─────────────────────────────────────────────── */}
       {!servicesReady ? (
         <div
           style={{
             width: "100%",
             maxWidth: 320,
             aspectRatio: "1",
-            border: `${dragging ? "2px dashed var(--red)" : previewSrc ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+            border: `2px solid var(--red)`,
             borderRadius: 20,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: busy || isDone ? "default" : "pointer",
-            transition: "border-color 0.2s",
             backgroundImage: "url('placeholder.gif')",
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -334,7 +289,7 @@ export default function UploadAside({
             <div
               style={{
                 backgroundColor: "var(--blue)",
-                margin: "var(--borderwidth",
+                margin: "var(--borderwidth)",
                 padding: "var(--borderwidth)",
                 display: "flex",
                 flexDirection: "column",
@@ -353,89 +308,115 @@ export default function UploadAside({
           )}
         </div>
       ) : (
-        <>
-          <div
-            onClick={() => !busy && !isDone && inputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
-            }}
-            style={{
-              width: "100%",
-              maxWidth: 320,
-              aspectRatio: "1",
-              border: `${dragging ? "2px dashed var(--red)" : previewSrc ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: busy || isDone ? "default" : "pointer",
-              transition: "border-color 0.2s",
-              background:
-                isDone && cutoutUrl
-                  ? "var(--red)"
-                  : isUploading
-                    ? `linear-gradient(to top, var(--red) ${progress}%, transparent ${progress}%)`
-                    : "none",
-              backgroundImage: previewSrc ? "none" : "url('placeholder.gif')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            {previewSrc ? (
-              <img
-                src={previewSrc}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: isDone && cutoutUrl ? "contain" : "cover",
-                  // Oscillate opacity while uploading
-                  animation: isUploading
-                    ? "preview-pulse 2.6s ease-in-out infinite"
-                    : "none",
-                  transition: "opacity 0.3s",
-                  background: isDone && cutoutUrl ? "transparent" : undefined,
-                }}
-                alt="preview"
-              />
-            ) : (
+        <div
+          className="uploaderImage"
+          onClick={() => !busy && !isDone && inputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
+          }}
+          style={{
+            width: "100%",
+            maxWidth: 320,
+            aspectRatio: "1",
+            border: `${dragging ? "2px dashed var(--red)" : isDone ? "2px solid var(--highlight)" : preview ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+            borderRadius: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: busy || isDone ? "default" : "pointer",
+            transition: "border-color 0.2s",
+            backgroundImage: preview || isDone ? "none" : "url('placeholder.gif')",
+
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          {isDone ? (
+            // ── Thank you state ──────────────────────────────────────
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                padding: 28,
+                gap: 20,
+              }}
+            >
               <div
                 style={{
-                  textAlign: "center",
-                  padding: 20,
+                  fontSize: 12,
+                  color: "var(--highlight)",
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  lineHeight: 2,
                 }}
               >
-                <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--highlight)",
-                    background: "rgba(0,0,0,1)",
-                    padding: "4px 12px",
-                  }}
-                >
-                  Tap to submit a memory
-                </div>
+                thank you for your memory
               </div>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: "none" }}
-              onChange={(e) => handleFile(e.target.files[0])}
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "white",
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  lineHeight: 2,
+                  opacity: 0.6,
+                  animation: "text-pulse 2.4s ease-in-out infinite",
+                }}
+              >
+                the slop plot machine<br />is processing it
+              </div>
+             
+            </div>
+          ) : preview ? (
+            // ── Preview image ────────────────────────────────────────
+            <img
+              src={preview}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                animation: isUploading
+                  ? "preview-pulse 2.6s ease-in-out infinite"
+                  : "none",
+                transition: "opacity 0.3s",
+              }}
+              alt="preview"
             />
-          </div>
-        </>
+          ) : (
+            // ── Empty state ──────────────────────────────────────────
+            <div style={{ textAlign: "center", padding: 20 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--highlight)",
+                  background: "rgba(0,0,0,1)",
+                  padding: "4px 12px",
+                }}
+              >
+                Tap to submit a memory
+              </div>
+            </div>
+          )}
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: "none" }}
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+        </div>
       )}
 
       {/* ── Tag selector ─────────────────────────────────────────────── */}
@@ -486,7 +467,6 @@ export default function UploadAside({
                     }}
                   />
                 )}
-
                 <div
                   style={{
                     display: "flex",
@@ -518,8 +498,7 @@ export default function UploadAside({
                       color: isSelected ? "#fff" : "var(--red)",
                     }}
                   >
-                    {tag.day}
-                    {tag.id}
+                    {tag.day}{tag.id}
                   </span>
                 </div>
               </button>
@@ -530,12 +509,8 @@ export default function UploadAside({
 
       {/* ── Submit / Done buttons ────────────────────────────────────── */}
       {isDone ? (
-        // Slide-to-story button — only shown during done phase
         <button
-          onClick={() => {
-            onGoToStory();
-            reset();
-          }}
+          onClick={() => { onGoToStory(); reset(); }}
           style={{
             marginTop: 14,
             padding: "14px 0",
@@ -556,7 +531,7 @@ export default function UploadAside({
             animation: "frame-flash 0.6s ease-in-out infinite",
           }}
         >
-          Read the story →
+          Read the Saga →
         </button>
       ) : (
         <button
@@ -582,7 +557,6 @@ export default function UploadAside({
             cursor: canSubmit ? "pointer" : "not-allowed",
             width: "calc(100% - 90px)",
             maxWidth: 320,
-            opacity: canSubmit ? 1 : 1,
             transition: "0.2s",
             position: "absolute",
             bottom: 45,
@@ -611,6 +585,10 @@ export default function UploadAside({
         @keyframes tag-pulse {
           0%, 100% { opacity: 0.5; }
           50%       { opacity: 1;   }
+        }
+        @keyframes text-pulse {
+          0%, 100% { opacity: 0.6; }
+          50%       { opacity: 0.2; }
         }
       `}</style>
     </div>
