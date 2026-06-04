@@ -145,7 +145,7 @@ const TAG_RULES = {
 Extract character traits, mood, appearance details from the image.
 Weave these into Alice's characterisation.`,
 
-  quest: `This image shows something OUT OF PLACE — a catalyst for a sidequest.
+  quest: `This image shows something OUT OF PLACE — a catalyst for a sidequest. Chapter here should start or continue adventures. 
 Interpret the image as a mysterious lure, anomaly or invitation to adventure.
 Open a new sidequest thread based on what you see.`,
 
@@ -176,13 +176,13 @@ Write with warmth, relief and earned stillness.`,
 
 const ARC_CONTEXT = {
   1: "We are establishing who Omni-Alice is. Focus on identity, presence and the world she inhabits.",
-  2: "The call to adventure has come. Something disrupts Alice's world and pulls her forward.",
+  2: "We are starting the adventure!!!!",
   3: "Alice is gathering companions and wisdom. New relationships are forming.",
   4: "Alice faces real obstacles. The journey is harder than expected.",
   5: "The darkest moment. Alice's core beliefs are shattered. Nothing is certain.",
-  6: "The final confrontation looms. The villain's power is at its peak.",
-  7: "Something irreversible has happened. Alice is changed forever.",
-  8: "The journey is complete. Alice returns, transformed, bearing her reward.",
+  6: "The final confrontation looms. The villain's power is at its peak. ",
+  7: "We discover that Alice is changed forever.",
+  8: "The journey is complete. Alice receives rewards. ",
 };
 
 // ── Call 1: Creative chapter generation ──────────────────────────────────
@@ -199,15 +199,15 @@ async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastCh
     ? `\n═══ INTERNET MOMENT (weave this in) ═══\nReference: ${moment.ref}\nHint: ${moment.hint}\nDo not explain it. Do not name it directly. Just let it bleed in.\n`
     : "";
 
-  // console.log("[LLM] operator:", chosenOperator, "| moment:", moment?.ref || "none", "| lastChapter:", lastChapter);
-        //   ${momentInstruction}
+  console.log("[LLM] operator:", chosenOperator, "| moment:", moment?.ref || "none", "| lastChapter:", lastChapter);
+      //     ${momentInstruction}
       // ${operatorInstruction}
 
   const prompt = `${VOICE_PROMPT}
         ═══ WORLD STATE ═══
         ${stateContext || "The story has just begun."}
 
-        ${momentInstruction}
+       
 
         ═══ CONTINUE FROM HERE ═══
         ${lastChapter
@@ -219,13 +219,13 @@ async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastCh
         ═══ THIS IMAGE ═══
         What the image shows: ${desc}
         What this image means for the story: ${tagRule}
-        Where we are in the grand arc: ${arcCtx}
+        These chapters should do this for the story: ${arcCtx}
 
         ═══ OUTPUT RULES ═══
         No markdown. No asterisks. No bold. No bullet points. Plain text only. 
         Do not write BREAKING NEWS. Do not add headers. Do not add labels beyond HEADLINE and CHAPTER.
-        A HEADLINE is max 8 words. A CHAPTER is max 3 sentences, each max 12 words.
         ${operatorInstruction}
+         ${momentInstruction}
 
         ═══ EXAMPLE — OUTPUT EXACTLY LIKE THIS ═══
         HEADLINE: OMNI-ALICE Seen Alone at the Barrier — WITNESSES SPEAK
@@ -233,8 +233,8 @@ async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastCh
         CHAPTER: She DROPS her drink and no one helps her. Sources confirm she has been barrier-maxxxing for forty minutes. Experts are baffled.
 
         ═══ NOW WRITE THE NEXT CHAPTER ═══
-        HEADLINE:
-        CHAPTER:`;
+        HEADLINE: max 8 words. 
+        CHAPTER: max 3 sentences, each max 12 words.`;
 
 
   const raw = await ollamaGenerate({ model: "llama3.1:latest", prompt });
@@ -291,7 +291,7 @@ END_UPDATES`;
 
 export async function generateStoryOutput({ config, analysis, state }) {
   const { descriptionLong, descriptionShort, tags, heroTag } = analysis;
-  const desc    = descriptionLong || descriptionShort || tags?.join(", ") || "";
+  const desc    = descriptionShort || descriptionLong || tags?.join(", ") || "";
   const tagId   = heroTag?.id || "hero";
   const tagRule = TAG_RULES[tagId] || TAG_RULES.hero;
   const arcDay  = state?.grandArcDay || 1;

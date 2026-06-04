@@ -7,7 +7,7 @@ router.get('/story', async (req, res) => {
   const chapters = await prisma.chapter.findMany({
     orderBy: { createdAt: 'asc' },
     include: {
-      uploadEvent: { select: { cloudinaryUrl: true, cutouts: true, tags: true } },
+      uploadEvent: { select: { cloudinaryUrl: true, cutouts: true, tags: true, analysisRaw: true,  } },
     },
   });
   res.json(chapters);

@@ -67,9 +67,8 @@ export default function App() {
 
   console.log(
     "LOOKING 4 THE PLOT in THE INSPEXTOR???, makes sense but i dont think u'll find it here",
-    events,
+    events, chapters,
     currentConfig,
-    import.meta.env.VITE_API_URL,
     servicesReady,
   );
 

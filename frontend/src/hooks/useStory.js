@@ -25,6 +25,9 @@ export function useStory() {
   }, []);
 
   function addEvent(payload) {
+
+  
+    
     setEvents((prev) => [
       ...prev,
       {

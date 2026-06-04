@@ -4,20 +4,6 @@ import Ticker from "./Ticker.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d)) return "";
-  return d
-    .toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-    .replace(",", " ·");
-}
-
 function seededRng(seed) {
   let s = seed | 0;
   return () => {
@@ -32,23 +18,21 @@ function cloudinaryResize(url, width = 200) {
   if (!url) return url;
   return url.replace("/upload/", `/upload/w_${width},c_scale,q_auto,f_auto/`);
 }
+
 // ── Layout constants ──────────────────────────────────────────────────────
 
-const SVG_W = 300;
-const ROW_H = 200;
-const TOP_PAD = 80;
+const SVG_W = 500;
+const ROW_H = 280;
+const TOP_PAD = 150;
 const BOTTOM_PAD = 100;
-const CARD_W = 150;
-const CARD_H = 50;
-const IMG_H = 90;
+const CARD_W = 180;
+const CARD_H = 80;
 const BEND_R = 16;
-const MARGIN = 20;
+const MARGIN = 40;
 const PAGE_SIZE = 50;
 
-// The ellipse clip is slightly inset from the card rect so the
-// border ellipse and the clip match exactly
-const ELL_RX = CARD_W / 2; // full half-width
-const ELL_RY = CARD_H / 2; // full half-height
+const ELL_RX = CARD_W / 2;
+const ELL_RY = CARD_H / 2;
 
 // ── Path builder ──────────────────────────────────────────────────────────
 
@@ -57,10 +41,8 @@ function buildPath(x1, y1, x2, y2, midY) {
   const dx = x2 - x1;
   const sx = Math.sign(dx) || 1;
   const clampedMid = Math.max(y1 + r * 2, Math.min(y2 - r * 2, midY));
-  const c1x = x1,
-    c1y = clampedMid;
-  const c2x = x2,
-    c2y = clampedMid;
+  const c1x = x1, c1y = clampedMid;
+  const c2x = x2, c2y = clampedMid;
   return [
     `M ${x1} ${y1}`,
     `L ${c1x} ${c1y - r}`,
@@ -68,9 +50,7 @@ function buildPath(x1, y1, x2, y2, midY) {
     Math.abs(dx) > r * 2 ? `L ${c2x - sx * r} ${c2y}` : "",
     `C ${c2x} ${c2y} ${c2x} ${c2y} ${c2x} ${c2y + r}`,
     `L ${x2} ${y2}`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  ].filter(Boolean).join(" ");
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -103,19 +83,24 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible.length > 0) {
-          const idx = Number(visible[0].target.dataset.idx);
-          const ev = visibleEvents[idx];
-          if (ev) setScrollDay(ev.day);
-        }
-      },
-      { root, threshold: 0.3 },
-    );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible.length > 0) {
+        const last = visible[visible.length - 1];
+        const idx = Number(last.target.dataset.idx);
+        const ev = visibleEvents[idx];
+        if (ev) setScrollDay(ev.day);
+      }
+    },
+    { 
+      root,
+      rootMargin: "-80px 0px 0px 0px", // ← exclude the sticky header height from top
+      threshold: 0.3,
+    },
+  );
     const nodes = Object.values(sentinelRefs.current);
     nodes.forEach((n) => n && observer.observe(n));
     return () => observer.disconnect();
@@ -125,23 +110,91 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     if (currentDay) setScrollDay(currentDay);
   }, [currentDay]);
 
-  // ── Layout ────────────────────────────────────────────────────────────
+  // ── Layout — rx/ry computed here so cx can use them ──────────────────
   const laid = useMemo(() => {
     const rng = seededRng(7);
     return visibleEvents.map((ev, i) => {
+      // Size first
+      const sizeRng = seededRng((i + 1) * 137);
+      const rx = ELL_RX * (0.8 + sizeRng() * 1.0);
+      const ry = ELL_RY * (0.8 + sizeRng() * 1.0);
+
+      // Position — clamp cx using actual rx
       const side = i % 2 === 0 ? -1 : 1;
-      const xBias = side * (SVG_W * 0.18);
+      const xBias = side * (SVG_W * 0.05);
       const xJitter = (rng() - 0.5) * (SVG_W * 0.55);
       const rawX = SVG_W / 2 + xBias + xJitter;
       const cx = Math.max(
-        CARD_W / 2 + MARGIN,
-        Math.min(SVG_W - CARD_W / 2 - MARGIN, rawX),
+        rx + MARGIN,
+        Math.min(SVG_W - rx - MARGIN, rawX),
       );
+
       const yJitter = (rng() - 0.5) * ROW_H * 0.7;
       const cy = TOP_PAD + i * ROW_H + yJitter;
-      return { ev, i, cx, cy };
+
+      return { ev, i, cx, cy, rx, ry };
     });
   }, [visibleEvents]);
+
+  // ── Flicker image pool ────────────────────────────────────────────────────
+
+  const [flickerUrl, setFlickerUrl] = useState(null);
+  const [flickerVisible, setFlickerVisible] = useState(false);
+  const flickerPoolRef = useRef([]);
+  const flickerIntervalRef = useRef(null);
+  const scrollTimerRef = useRef(null);
+
+  // Keep pool in sync with visible events
+  useEffect(() => {
+    const urls = visibleEvents
+      .map(ev => ev.cloudinaryUrl)
+      .filter(Boolean);
+    flickerPoolRef.current = urls;
+
+    console.log("searching for event url", urls);
+    
+  }, [visibleEvents]);
+
+  // Start/stop the flicker interval on scroll
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    function startFlicker() {
+      if (flickerIntervalRef.current) return; // already running
+      setFlickerVisible(true);
+
+      // Pick immediately, then on interval
+      const pick = () => {
+        const pool = flickerPoolRef.current;
+        if (!pool.length) return;
+        const url = pool[Math.floor(Math.random() * pool.length)];
+        setFlickerUrl(url);
+      };
+
+      pick();
+      flickerIntervalRef.current = setInterval(pick, 12); // flicker speed in ms
+    }
+
+    function stopFlicker() {
+      clearInterval(flickerIntervalRef.current);
+      flickerIntervalRef.current = null;
+      setFlickerVisible(false);
+    }
+
+    function onScroll() {
+      startFlicker();
+      clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(stopFlicker, 400); // stop 400ms after scroll ends
+    }
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      clearInterval(flickerIntervalRef.current);
+      clearTimeout(scrollTimerRef.current);
+    };
+  }, []);
 
   const svgH =
     TOP_PAD +
@@ -153,10 +206,8 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     const rng = seededRng(13);
     return laid.slice(0, -1).map((a, i) => {
       const b = laid[i + 1];
-      const x1 = a.cx,
-        y1 = a.cy + CARD_H / 2 + 4;
-      const x2 = b.cx,
-        y2 = b.cy - CARD_H / 2 - 4;
+      const x1 = a.cx, y1 = a.cy + a.ry + 4;
+      const x2 = b.cx, y2 = b.cy - b.ry - 4;
       const midY = y1 + (y2 - y1) * (0.35 + rng() * 0.3);
       return buildPath(x1, y1, x2, y2, midY);
     });
@@ -177,14 +228,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
       }}
     >
       {/* Sticky header */}
-      <div
-        style={{
-          position: "sticky",
-          width: "100%",
-          top: 0,
-          zIndex: 20,
-        }}
-      >
+      <div style={{ position: "sticky", width: "100%", top: 0, zIndex: 20 }}>
         <Ticker
           position="top"
           text={"the plot database"}
@@ -205,53 +249,41 @@ export default function TimelineAside({ events, currentDay, isActive }) {
             padding: "0 14px",
           }}
         >
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 11,
-              letterSpacing: 3,
-              color: "var(--red)",
-              textTransform: "uppercase",
-              fontWeight: 400,
-            }}
-          >
+          <h1 style={{
+            margin: 0,
+            fontSize: 11,
+            letterSpacing: 3,
+            color: "var(--red)",
+            textTransform: "uppercase",
+            fontWeight: 400,
+          }}>
             The Plotline
           </h1>
-          <span
-            style={{
-              fontSize: 11,
-              letterSpacing: 2,
-              color: "var(--red)",
-              textTransform: "uppercase",
-            }}
-          >
+          <span style={{
+            fontSize: 11,
+            letterSpacing: 2,
+            color: "var(--red)",
+            textTransform: "uppercase",
+          }}>
             Day {scrollDay}
           </span>
         </div>
       </div>
 
       {events.length === 0 && (
-        <p
-          style={{
-            color: "#333",
-            fontSize: 13,
-            marginTop: 80,
-            textAlign: "center",
-            letterSpacing: 1,
-          }}
-        >
+        <p style={{
+          color: "#333",
+          fontSize: 13,
+          marginTop: 80,
+          textAlign: "center",
+          letterSpacing: 1,
+        }}>
           No uploads yet — be the first.
         </p>
       )}
 
       {hasMore && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "16px 0 0",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "center", padding: "16px 0 0" }}>
           <button
             onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
             style={{
@@ -271,16 +303,42 @@ export default function TimelineAside({ events, currentDay, isActive }) {
         </div>
       )}
 
+      {/* ── Flicker image ── */}
+      <div style={{
+        position: "fixed",
+        top: "0px",
+        left: "0px",
+        // transform: "translate(-50%, -50%)",
+        right: "0px",
+        bottom: "0px",
+        // maxWidth: 400,
+        // aspectRatio: "1",
+        pointerEvents: "none",
+        zIndex: 10,
+        opacity: flickerVisible ? 1 : 0,
+        transition: "opacity 0.15s ease",
+        mixBlendMode: "screen",
+      }}>
+        {flickerUrl && (
+          <img
+            src={cloudinaryResize(flickerUrl, 600)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "fill",
+              // filter: "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)",
+            }}
+            alt=""
+          />
+        )}
+      </div>
+
       <div style={{ display: "flex", justifyContent: "center" }}>
         <svg
           width={SVG_W}
           height={svgH}
           viewBox={`0 0 ${SVG_W} ${svgH}`}
-          style={{
-            overflow: "visible",
-            touchAction: "pan-y",
-            userSelect: "none",
-          }}
+          style={{ overflow: "visible", touchAction: "pan-y", userSelect: "none" }}
         >
           {/* Connecting paths */}
           {paths.map((d, i) => (
@@ -306,38 +364,21 @@ export default function TimelineAside({ events, currentDay, isActive }) {
             />
           ))}
 
-          {/* ── Event cards ─────────────────────────────────────────── */}
-          {laid.map(({ ev, i, cx, cy }) => {
+          {/* ── Event cards ── */}
+          {laid.map(({ ev, i, cx, cy, rx, ry }) => {
             const isCurrentDay = ev.day === currentDay;
             const subjectUrl = ev.cutouts?.subject;
             const imgUrl = subjectUrl || ev.cloudinaryUrl;
-            const dateLabel = ev.analysisRaw?.created_at;
             const desc =
               ev.descriptionShort ||
               ev.analysisRaw?.descriptionShort ||
-              ev.description ||
-              ev.analysisRaw?.description ||
               "";
 
-            // Resolve hero tag: socket events carry heroTagId directly,
-            // DB-loaded events carry it inside analysisRaw
             const heroTagId = ev.heroTagId || ev.analysisRaw?.heroTagId || null;
             const heroTag = heroTagId
-              ? HERO_TAGS.find((t) => t.id === heroTagId) ||
-                defaultTagForDay(ev.day)
+              ? HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(ev.day)
               : defaultTagForDay(ev.day);
 
-            // Tag SVG — seeded random position inside the ellipse
-            const tagRng = seededRng((i + 250) * 2500);
-            const angle = tagRng() * Math.PI * 2;
-            const TAG_SIZE = 50;
-            const dist = tagRng() * Math.min(ELL_RX, ELL_RY) * 5;
-
-            const sizeRng = seededRng((i + 1) * 137);
-            const rx = ELL_RX * (0.7 + sizeRng() * 1.7); // 30%–200% of base width
-            const ry = ELL_RY * (0.7 + sizeRng() * 1.7); // independent call = different proportion
-
-            // Is this the first event of the current day (for scroll anchor)?
             const isAnchor =
               isCurrentDay &&
               i === visibleEvents.findIndex((e) => e.day === currentDay);
@@ -365,7 +406,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                   overflow="visible"
                 />
 
-                {/* Image — centred on cx/cy, sized to the actual rx/ry */}
+                {/* Image */}
                 {imgUrl && imgUrl.length > 1 && (
                   <image
                     href={cloudinaryResize(imgUrl, 200)}
@@ -373,19 +414,15 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                     y={cy - ry}
                     width={rx * 2}
                     height={ry * 2}
-                    preserveAspectRatio={
-                      subjectUrl ? "xMidYMid meet" : "xMidYMid slice"
-                    }
+                    preserveAspectRatio={subjectUrl ? "xMidYMid meet" : "xMidYMid slice"}
                     clipPath={`url(#ellclip-${i})`}
                     style={{
-                      filter:
-                        "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)",
+                      filter: "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)",
                     }}
                   />
                 )}
 
-                {/* Text below the actual ellipse bottom edge */}
-
+                {/* Description text */}
                 <foreignObject
                   x={textRight ? cx : cx - rx}
                   y={cy - ry - 70 / 1.5}
@@ -393,36 +430,6 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                   height={"auto"}
                   overflow={"visible"}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: textRight ? "row-reverse" : "row",
-                      gap: 4,
-                      marginTop: 4,
-                    }}
-                  >
-                    {(ev.analysisRaw?.colors || [])
-                      .slice(0, 3)
-                      .filter((c) => c[0])
-                      .map((c, ci) => {
-                        const amount = c[1];
-                        const dotR = 3 + (amount / 40) * 5; // 3–9px radius
-                        return (
-                          <div
-                            key={ci}
-                            style={{
-                              width: dotR * 2,
-                              height: dotR * 2,
-                              borderRadius: "50%",
-                              background: c[0],
-                              flexShrink: 0,
-                              alignSelf: "center",
-                            }}
-                          />
-                        );
-                      })}
-                  </div>
-
                   <div
                     xmlns="http://www.w3.org/1999/xhtml"
                     ref={(el) => {
@@ -437,59 +444,20 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                     }}
                   >
                     {desc && (
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "white",
-                          lineHeight: 1.35,
-                          fontStyle: "italic",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: "vertical",
-                          // overflow: "hidden",
-                        }}
-                      >
+                      <div style={{
+                        fontSize: 8,
+                        color: "white",
+                        lineHeight: 0.9,
+                        fontStyle: "italic",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                      }}>
                         {desc}
                       </div>
                     )}
                   </div>
-
-                  {dateLabel && (
-                    <div
-                      style={{
-                        fontSize: 6,
-                        color: "white",
-                        letterSpacing: 1,
-                        top: -3,
-                        opacity: 0.5,
-                        left: textRight ? "0" : "-13px",
-                        right: textRight ? "-13px" : "0px",
-                        position: "absolute",
-
-                        transform: textRight
-                          ? "rotate(-90deg)"
-                          : "rotate(90deg)",
-                        transformOrigin: textRight
-                          ? "right center"
-                          : "left center",
-                        textAlign: textRight ? "right" : "left",
-                      }}
-                    >
-                      {dateLabel}
-                    </div>
-                  )}
                 </foreignObject>
-
-                {/* Tag SVG — random position using actual rx/ry */}
-                {/* Hero tag SVG — floats just outside ellipse edge */}
-                <image
-                  href={`/tags/${heroTag.svg}`}
-                  x={cx + rx * 2.55 * Math.cos(angle) - TAG_SIZE / 2}
-                  y={cy + ry * 2.55 * Math.sin(angle) - TAG_SIZE / 2}
-                  width={TAG_SIZE}
-                  height={TAG_SIZE}
-                  style={{ opacity: 1 }}
-                />
               </g>
             );
           })}
