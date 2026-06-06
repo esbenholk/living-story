@@ -260,165 +260,171 @@ export default function UploadAside({
         borderColor={tickerBorderColor}
       />
 
+    
+      <h1>{currentConfig?.headline}</h1>
+   
+      <div className="flex"></div>
       <div>
-        <h1>{currentConfig?.headline}</h1>
-      </div>
-
-      {/* ── Drop zone ─────────────────────────────────────────────── */}
-      {!servicesReady ? (
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 320,
-            aspectRatio: "1",
-            border: `2px solid var(--red)`,
-            borderRadius: 20,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundImage: "url('placeholder.gif')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
-          {servicesChecking ? (
-            "Checking services..."
-          ) : (
-            <div
-              style={{
-                backgroundColor: "var(--blue)",
-                margin: "var(--borderwidth)",
-                padding: "var(--borderwidth)",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <p>excuse the inconvenience:</p>
-              <p>slop plot temporarily down</p>
-              <p>{!serviceStatus.sidecar && "· Sidecar offline ·"}</p>
-              <p>{!serviceStatus.ollama && "· Ollama offline ·"}</p>
-              <p>Services unavailable</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div
-          className="uploaderImage"
-          onClick={() => !busy && !isDone && inputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
-          }}
-          style={{
-            width: "100%",
-            maxWidth: 320,
-            aspectRatio: "1",
-            border: `${dragging ? "2px dashed var(--red)" : isDone ? "2px solid var(--highlight)" : preview ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
-            borderRadius: 20,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: busy || isDone ? "default" : "pointer",
-            transition: "border-color 0.2s",
-            backgroundImage: preview || isDone ? "none" : "url('placeholder.gif')",
-
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
-          {isDone ? (
-            // ── Thank you state ──────────────────────────────────────
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center",
-                padding: 28,
-                gap: 20,
-              }}
-            >
+        {/* ── Drop zone ─────────────────────────────────────────────── */}
+        {!servicesReady ? (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              aspectRatio: "1",
+              border: `2px solid var(--red)`,
+              borderRadius: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundImage: "url('placeholder.gif')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {servicesChecking ? (
+              "Checking services..."
+            ) : (
               <div
                 style={{
-                  fontSize: 12,
-                  color: "var(--highlight)",
-                  letterSpacing: 3,
-                  textTransform: "uppercase",
-                  lineHeight: 2,
+                  backgroundColor: "var(--blue)",
+                  margin: "var(--borderwidth)",
+                  padding: "var(--borderwidth)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignContent: "center",
+                  alignItems: "center",
+                  textAlign: "center",
                 }}
               >
-                thank you for your memory
+                <p>excuse the inconvenience:</p>
+                <p>slop plot temporarily down</p>
+                <p>{!serviceStatus.sidecar && "· Sidecar offline ·"}</p>
+                <p>{!serviceStatus.ollama && "· Ollama offline ·"}</p>
+                <p>Services unavailable</p>
               </div>
+            )}
+          </div>
+        ) : (
+          <div
+            className="uploaderImage"
+            onClick={() => !busy && !isDone && inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
+            }}
+            style={{
+              width: "100%",
+              maxWidth: 320,
+              aspectRatio: "1",
+              border: `${dragging ? "2px dashed var(--red)" : isDone ? "2px solid var(--highlight)" : preview ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+              borderRadius: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: busy || isDone ? "default" : "pointer",
+              transition: "border-color 0.2s",
+              backgroundImage:
+                preview || isDone ? "none" : "url('placeholder.gif')",
+
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            {isDone ? (
+              // ── Thank you state ──────────────────────────────────────
               <div
                 style={{
-                  fontSize: 11,
-                  color: "white",
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  lineHeight: 2,
-                  opacity: 0.6,
-                  animation: "text-pulse 2.4s ease-in-out infinite",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  padding: 28,
+                  gap: 20,
                 }}
               >
-                the slop plot machine<br />is processing it
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--highlight)",
+                    letterSpacing: 3,
+                    textTransform: "uppercase",
+                    lineHeight: 2,
+                  }}
+                >
+                  thank you for your memory
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "white",
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    lineHeight: 2,
+                    opacity: 0.6,
+                    animation: "text-pulse 2.4s ease-in-out infinite",
+                  }}
+                >
+                  the slop plot machine
+                  <br />
+                  is processing it
+                </div>
               </div>
-             
-            </div>
-          ) : preview ? (
-            // ── Preview image ────────────────────────────────────────
-            <img
-              src={preview}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                animation: isUploading
-                  ? "preview-pulse 2.6s ease-in-out infinite"
-                  : "none",
-                transition: "opacity 0.3s",
-              }}
-              alt="preview"
+            ) : preview ? (
+              // ── Preview image ────────────────────────────────────────
+              <img
+                src={preview}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  animation: isUploading
+                    ? "preview-pulse 2.6s ease-in-out infinite"
+                    : "none",
+                  transition: "opacity 0.3s",
+                }}
+                alt="preview"
+              />
+            ) : (
+              // ── Empty state ──────────────────────────────────────────
+              <div style={{ textAlign: "center", padding: 20 }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--highlight)",
+                    background: "rgba(0,0,0,1)",
+                    padding: "4px 12px",
+                  }}
+                >
+                  Tap to submit a memory
+                </div>
+              </div>
+            )}
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={(e) => handleFile(e.target.files[0])}
             />
-          ) : (
-            // ── Empty state ──────────────────────────────────────────
-            <div style={{ textAlign: "center", padding: 20 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "var(--highlight)",
-                  background: "rgba(0,0,0,1)",
-                  padding: "4px 12px",
-                }}
-              >
-                Tap to submit a memory
-              </div>
-            </div>
-          )}
-
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: "none" }}
-            onChange={(e) => handleFile(e.target.files[0])}
-          />
-        </div>
-      )}
-
+          </div>
+        )}
+      </div>
       {/* ── Tag selector ─────────────────────────────────────────────── */}
       <div style={{ width: "100%", maxWidth: "calc(100%)", marginTop: 20 }}>
         <div
@@ -498,7 +504,8 @@ export default function UploadAside({
                       color: isSelected ? "#fff" : "var(--red)",
                     }}
                   >
-                    {tag.day}{tag.id}
+                    {tag.day}
+                    {tag.id}
                   </span>
                 </div>
               </button>
@@ -510,7 +517,10 @@ export default function UploadAside({
       {/* ── Submit / Done buttons ────────────────────────────────────── */}
       {isDone ? (
         <button
-          onClick={() => { onGoToStory(); reset(); }}
+          onClick={() => {
+            onGoToStory();
+            reset();
+          }}
           style={{
             marginTop: 14,
             padding: "14px 0",
