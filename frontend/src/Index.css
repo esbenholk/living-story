@@ -90,3 +90,8 @@ h1 {
   -moz-box-shadow: inset 0px 0px 10px 5px rgba(255, 51, 0, 0.9);
   box-shadow: inset 0px 0px 10px 5px rgba(255, 51, 0, 0.9);
 }
+
+a {
+  color: var(--highlight);
+  
+}

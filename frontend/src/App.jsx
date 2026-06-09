@@ -7,6 +7,7 @@ import TimelineAside from "./components/TimelineAside.jsx";
 import StoryAside from "./components/StoryAside.jsx";
 import { useStory } from "./hooks/useStory.js";
 import { useSocket } from "./hooks/useSocket.js";
+import InfoOverlay from "./components/InfoOverlay.jsx";
 
 const panelLabels = ["SUBMIT", "THE PLOT", "THE SAGA"];
 
@@ -67,7 +68,8 @@ export default function App() {
 
   console.log(
     "LOOKING 4 THE PLOT in THE INSPEXTOR???, makes sense but i dont think u'll find it here",
-    events, chapters,
+    events,
+    chapters,
     currentConfig,
     servicesReady,
   );
@@ -85,6 +87,8 @@ export default function App() {
         position: "relative",
       }}
     >
+      <InfoOverlay />
+
       <Swiper
         slidesPerView={1}
         style={{ height: "100%" }}
