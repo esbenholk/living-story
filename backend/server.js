@@ -57,7 +57,7 @@ app.use("/api", eventsRouter);
 app.use("/api/health", healthRouter);
 
 //chatbots
-// initAllBots(app);
+initAllBots(app);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);

@@ -5,7 +5,7 @@ import { getCurrentDay, getChapterConfig } from "../services/day.service.js";
 const router = express.Router();
 
 router.get("/events", async (req, res) => {
-  const day = getCurrentDay();
+  const day    = getCurrentDay();
   const config = getChapterConfig(day);
 
   const events = await prisma.uploadEvent.findMany({
@@ -13,14 +13,17 @@ router.get("/events", async (req, res) => {
     include: { chapter: true },
   });
 
+  const mapped = events.map(ev => ({
+    ...ev,
+    heroTagId:        ev.analysisRaw?.heroTagId        || null,
+    descriptionShort: ev.analysisRaw?.descriptionShort || null,
+    descriptionLong:  ev.analysisRaw?.descriptionLong  || null,
+  }));
+
   res.json({
-    events,
+    events: mapped,
     currentDay: day,
-    currentConfig: {
-      day,
-      headline: config.headline,
-      tone: config.tone,
-    },
+    currentConfig: { day, headline: config.headline, tone: config.tone },
   });
 });
 
