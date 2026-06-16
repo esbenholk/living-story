@@ -193,7 +193,6 @@ function ChapterCard({ chapter, colors }) {
     <>
     <div style={{
       background: colors.container,
-      border: `5px solid colors.headline`,
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
@@ -236,12 +235,10 @@ function ChapterCard({ chapter, colors }) {
             ) : (
               // Subject or original — single image
               <div style={{
-                width: 120,
                 height: 120,
                 overflow: "hidden",
                 width: "100%",
                 borderRadius: "50%",
-                overflow: "hidden",
                 backgroundColor: `${colors.headline}`,
                 display: "flex",
                 flexDirection: "row",

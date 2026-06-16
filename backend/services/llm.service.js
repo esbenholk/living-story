@@ -12,6 +12,11 @@ const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const TIMEOUT_MS = 120_000;
 import VOICE_PROMPT from "../config/llmVoicePrompt.js";
 import INTERNET_MOMENTS from "../config/internetMoments.js";
+import ARC_CONTEXT from "../config/arcContext.js";
+ import { getTagRule } from "../config/tagRules.js";
+
+const localModelName = "qwen2.5:14b";
+
 
 // ── Core Ollama helper ────────────────────────────────────────────────────
 
@@ -24,17 +29,14 @@ async function ollamaGenerate({ model, prompt, images = [] }) {
       prompt,
       stream: false,
       keep_alive: 0,
-      options: {
-        num_ctx: 4096,
-        num_predict: 512,
-      },
+      options: { num_ctx: 4096, num_predict: 512 },
     };
     if (images.length) body.images = images;
     const res = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method:  "POST",
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
-      signal:  controller.signal,
+      body: JSON.stringify(body),
+      signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Ollama ${model} returned ${res.status}`);
     const data = await res.json();
@@ -43,6 +45,33 @@ async function ollamaGenerate({ model, prompt, images = [] }) {
     clearTimeout(timer);
   }
 }
+
+async function ollamaChat({ model, messages }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        keep_alive: 0,
+        options: { num_ctx: 4096, num_predict: 512 },
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Ollama chat ${model} returned ${res.status}`);
+    const data = await res.json();
+    return (data.message?.content || "").trim();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+ 
+
+
 
 // ── Image fetch helper ────────────────────────────────────────────────────
 
@@ -113,7 +142,7 @@ export async function describeImageLong(imageUrl) {
   try {
     const description = await ollamaGenerate({
       model: "llava:latest",
-      prompt: `Describe the feeling of this image
+      prompt: `A the voice of a tabloid journalist describe this image
       Focus on:
       - What is physically happening — actions, movement, interactions
       - Who is present and what they are doing
@@ -127,7 +156,7 @@ export async function describeImageLong(imageUrl) {
       - Be clinical, concise, and visual.
       - Return caption text only.
 
-      Write 3-5 sentences. Lead with action, not appearance.`,
+      Write 3-5 sentences.`,
       images: [imageB64],
     });
     console.log(`[LLM] Long description: ${description.length} chars`, description);
@@ -140,149 +169,98 @@ export async function describeImageLong(imageUrl) {
 
 // ── Tag behaviour definitions ─────────────────────────────────────────────
 
-const TAG_RULES = {
-  hero: `This image shows OMNI-ALICE herself.
-Extract character traits, mood, appearance details from the image.
-Weave these into Alice's characterisation.`,
 
-  quest: `This image shows something OUT OF PLACE — a catalyst for a sidequest. Chapter here should start or continue adventures. 
-Interpret the image as a mysterious lure, anomaly or invitation to adventure.
-Open a new sidequest thread based on what you see.`,
 
-  mentor: `This image shows an NPC — a sidekick, guide or stranger.
-Give this character a name and personality based on the image.
-Decide their role: do they join Alice's team, share wisdom, or issue a challenge?`,
-
-  challenge: `This image shows a PROBLEM or OBSTACLE Alice and her companions must face.`,
-
-  abyss: `This image represents CHAOS and INVERSION.
-Something we believed to be true is now called into question.
-Write with a sense of dread, confusion and lost certainty.`,
-
-  villain: `This image shows THE VILLAIN or their influence.
-Extract traits, appearance and motivation from the image.
-If the villain has no name yet, give them one.`,
-
-  transformation: `This image shows CHANGE, MUTATION or EVOLUTION.
-Take something from the previous chapter and merge it with this image.
-Something is irreversibly different now.`,
-
-  reward: `This image shows a REWARD — a treat, a gift, a moment of rest.
-Interpret the image as something given to a character in the story.
-Write with warmth, relief and earned stillness.`,
-};
-
-// ── Grand arc context ─────────────────────────────────────────────────────
-
-const ARC_CONTEXT = {
-  1: "We are establishing who Omni-Alice is. Focus on identity, presence and the world she inhabits.",
-  2: "We are starting the adventure!!!!",
-  3: "Alice is gathering companions and wisdom. New relationships are forming.",
-  4: "Alice faces real obstacles. The journey is harder than expected.",
-  5: "The darkest moment. Alice's core beliefs are shattered. Nothing is certain.",
-  6: "The final confrontation looms. The villain's power is at its peak. ",
-  7: "We discover that Alice is changed forever.",
-  8: "The journey is complete. Alice receives rewards. ",
-};
 
 // ── Call 1: Creative chapter generation ──────────────────────────────────
 
-async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastChapter }) {
-
+async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastChapter, chatHistory = [] }) {
+ 
   const chosenOperator = roll(OPERATOR_PERCENT) ? pickRandom(OPERATORS) : null;
-  const operatorInstruction = chosenOperator
-    ? `OPERATOR_WORD: [declare your ${chosenOperator} word here before writing]\n`
-    : "";
-
   const moment = roll(MOMENT_PERCENT) ? pickRandom(INTERNET_MOMENTS) : null;
-  const momentInstruction = moment
-    ? `\n═══ INTERNET MOMENT (weave this in) ═══\nReference: ${moment.ref}\nHint: ${moment.hint}\nDo not explain it. Do not name it directly. Just let it bleed in.\n`
-    : "";
+  console.log("[LLM] moment:", moment?.ref || "none", "| lastChapter:", lastChapter?.slice(0, 60));
+  ///${moment ? `WEAVE THIS IN SUBTLY: ${moment.ref} — ${moment.hint}\n` : ""}
 
-  console.log("[LLM] operator:", chosenOperator, "| moment:", moment?.ref || "none", "| lastChapter:", lastChapter);
-      //     ${momentInstruction}
-      // ${operatorInstruction}
+  
+    // Build the user turn for this chapter
+    const userContent =
+          `NEW EVIDENCE FROM THE FIELD:
+          ${desc}
+          
+          This image was tagged: ${tagRule}
+          
+          WHERE WE ARE IN THE SAGA TODAY:
+          ${arcCtx}
+          
+          ${stateContext ? `SAGA STATE:\n${stateContext}\n` : ""}
 
-  const prompt = `${VOICE_PROMPT}
-        ═══ WORLD STATE ═══
-        ${stateContext || "The story has just begun."}
+          ${chosenOperator ? `use this operator once: ${chosenOperator}\n` : ""}
+          ${moment ? `make a subtle reference to this internet phenomenon: ${moment.ref} — ${moment.hint}\n` : ""}
 
-       
-
-        ═══ CONTINUE FROM HERE ═══
-        ${lastChapter
-          ? `The last thing that happened was: "${lastChapter}"
-        This chapter starts ONE SECOND LATER. Something from that moment must carry forward.
-        Do not restate it. Do not summarise it. Pick up the thread and pull.`
-          : "This is the first chapter. Establish the scene."}
-
-        ═══ THIS IMAGE ═══
-        What the image shows: ${desc}
-        What this image means for the story: ${tagRule}
-        These chapters should do this for the story: ${arcCtx}
-
-        ═══ OUTPUT RULES ═══
-        No markdown. No asterisks. No bold. No bullet points. Plain text only. 
-        Do not write BREAKING NEWS. Do not add headers. Do not add labels beyond HEADLINE and CHAPTER.
-        ${operatorInstruction}
-         ${momentInstruction}
-
-        ═══ EXAMPLE — OUTPUT EXACTLY LIKE THIS ═══
-        HEADLINE: OMNI-ALICE Seen Alone at the Barrier — WITNESSES SPEAK
-
-        CHAPTER: She DROPS her drink and no one helps her. Sources confirm she has been barrier-maxxxing for forty minutes. Experts are baffled.
-
-        ═══ NOW WRITE THE NEXT CHAPTER ═══
-        HEADLINE: max 8 words. 
-        CHAPTER: max 3 sentences, each max 12 words.`;
-
-
-  const raw = await ollamaGenerate({ model: "llama3.1:latest", prompt });
-  console.log("[LLM] Raw chapter output:\n", raw);
-
-
-  return parseChapter(raw);
+          Continue the saga. Write what happens next.
+          HEADLINE: (max 8 words)
+          CHAPTER: (3 sentences, each max 12 words)`;
+  
+    // Build messages array:
+    // system prompt + all previous chapter turns + this new turn
+    const messages = [
+      { role: "system", content: VOICE_PROMPT },
+      ...chatHistory,
+      { role: "user", content: userContent },
+    ];
+  
+    const raw = await ollamaChat({ model: localModelName, messages });
+    console.log("[LLM] Raw chapter output:\n", raw);
+  
+    const parsed = parseChapter(raw);
+  
+    // Return the new history turn so caller can append it
+    const newHistory = [
+      { role: "user",      content: userContent },
+      { role: "assistant", content: raw },
+    ];
+  
+    return { ...parsed, newHistory };
 }
 
 // ── Call 2: State extraction ──────────────────────────────────────────────
 
 async function extractStateUpdates({ headline, chapter, desc, tagRule, tagId }) {
-  const prompt = `You are a data extraction system. Read the chapter below and extract structured story updates.
-Only extract what is genuinely present in the chapter. Skip anything you are not certain about.
-Return only the keys that have real values. No placeholder text. No brackets.
+const prompt = `You are a precise story-state tracker for the Saga of Omni-Alice.
+Read the chapter below. Extract ONLY things that matter for the ongoing saga.
+Be conservative. If unsure, skip it. Do not invent. Do not infer from images.
 
-CHAPTER:
-"${headline ? headline + " — " : ""}${chapter}"
+CHAPTER: "${headline ? headline + " — " : ""}${chapter}"
 
-IMAGE DESCRIPTION:
-${desc}
+RULES:
+- ALICE_TRAIT: only concrete character traits shown in THIS chapter
+- ALICE_EXPERIENCE: one sentence — what just happened to Alice
+- NPC_JOIN: only if a NEW named character appears and joins Alice. Format: Name | role | one trait
+- CONSPIRACY_SEED: only if a specific detail hints at Slop Plot. One sentence, concrete.
+- BELIEF_ADD: only if Alice explicitly believes something new. Her words or clear internal state.
+- SUMMARY: 2 sentences max. What happened. What changed.
+- THREAD_OPEN: only if THIS CHAPTER introduces a concrete unresolved story question
+  involving a named person, place, or object Alice has actually interacted with.
+  Format: [NAME] — one sentence describing the unresolved tension.
+  Example: "The Backstage Map — Alice found a handdrawn map; where does it lead?"
+  Example: "The Watcher — someone has been making eye contact across three fields"
+  NOT: "The pink throne raised questions" — that is an image object, not a story thread
+  NOT: "Mystery unfolds" — too vague to pay off
 
-IMAGE TAG: ${tagId}
+THREAD_RESOLVE: only if an existing open thread is concretely closed in this chapter.
+  Use the exact thread name from when it was opened.
 
-─── EXTRACTION RULES ───
-ALICE_TRAIT: hero tag only — comma-separated personality traits visible in this chapter
-ALICE_APPEARANCE: hero tag only — one sentence about how Alice looks
-ALICE_EXPERIENCE: one concrete thing Alice just did or went through
-VILLAIN_NAME: villain tag only, only if unnamed — the actual name
-VILLAIN_TRAIT: villain tag only — comma-separated traits
-VILLAIN_APPEARANCE: villain tag only — one sentence
-NPC_JOIN: new character only — format exactly: Name | role | traits
-NPC_FLIP: allegiance change only — format exactly: Name | ally or enemy
-QUEST_OPEN: new sidequest only — one sentence
-QUEST_CLOSE: resolved sidequest only — a few words identifying which
-CHALLENGE_OPEN: new obstacle only — one sentence
-CHALLENGE_RESOLVE: overcome challenge only — a few words identifying which
-BELIEF_ADD: new truth established — the actual statement
-BELIEF_INVERT: reversed truth — a few words identifying which belief
-THREAD_OPEN: new storyline — one sentence
-THREAD_RESOLVE: concluded storyline — a few words
-SUMMARY: always write this — 2-3 sentences of everything that has happened in the story so far
+Do NOT extract:
+- Challenges from image objects (pink thrones, crowns, chairs)
+- NPCs from unnamed background people
+- Threads from visual details in the image
+- Anything not in the chapter text
 
 STATE_UPDATES:
-[write only keys with real values here]
+[only real values here]
 END_UPDATES`;
 
-  const raw = await ollamaGenerate({ model: "llama3.1:latest", prompt });
+  const raw = await ollamaGenerate({ model: localModelName, prompt });
   console.log("[LLM] Raw state output:\n", raw);
   return parseStateUpdates(raw);
 }
@@ -293,8 +271,8 @@ export async function generateStoryOutput({ config, analysis, state }) {
   const { descriptionLong, descriptionShort, tags, heroTag } = analysis;
   const desc    = descriptionShort || descriptionLong || tags?.join(", ") || "";
   const tagId   = heroTag?.id || "hero";
-  const tagRule = TAG_RULES[tagId] || TAG_RULES.hero;
   const arcDay  = state?.grandArcDay || 1;
+  const tagRule = getTagRule(tagId, arcDay);
   const arcCtx  = ARC_CONTEXT[arcDay] || ARC_CONTEXT[1];
 
   const { formatStateForPrompt } = await import("./story.state.service.js");
@@ -303,13 +281,13 @@ export async function generateStoryOutput({ config, analysis, state }) {
   console.log("[LLM] Call 1 — generating chapter. Tag:", tagId, "Arc day:", arcDay);
 
   // ── Call 1: Generate the creative chapter ─────────────────────────
-  const { headline, chapter } = await generateChapterText({
+  const { headline, chapter, newHistory } = await generateChapterText({
     desc,
     tagRule,
     arcCtx,
     stateContext,
-    lastChapter: state?.lastChapter || null,  // ← add this
-
+    lastChapter: state?.lastChapter || null,
+    chatHistory:  state?.chatHistory  || [],
   });
 
   if (!chapter) throw new Error("Chapter generation returned empty");
@@ -324,8 +302,9 @@ export async function generateStoryOutput({ config, analysis, state }) {
     tagRule,
     tagId,
   });
+  
+  return { headline, chapter, stateUpdates: { ...stateUpdates, newHistory } };
 
-  return { headline, chapter, stateUpdates };
 }
 
 // ── Output parsers ────────────────────────────────────────────────────────
@@ -435,7 +414,7 @@ function pickRandom(arr) {
 
 // ── Operators ─────────────────────────────────────────────────────────────
 
-const OPERATOR_PERCENT = 100; // % chance an operator is injected
+const OPERATOR_PERCENT = 5; // % chance an operator is injected
 
 const OPERATORS = [
   "Use one [noun]-maxxxing word naturally in the chapter. Example: grief-maxxxing, crowd-maxxxing, lore-maxxxing.",
@@ -445,5 +424,5 @@ const OPERATORS = [
 
 // ── Internet moments ──────────────────────────────────────────────────────
 
-const MOMENT_PERCENT = 100; // % chance an internet moment is injected
+const MOMENT_PERCENT = 2; // % chance an internet moment is injected
 

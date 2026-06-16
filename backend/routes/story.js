@@ -13,4 +13,13 @@ router.get('/story', async (req, res) => {
   res.json(chapters);
 });
 
+
+router.get('/reset-chat', async (req, res) => {
+  const { loadState, saveState } = await import('../services/story.state.service.js');
+  const state = await loadState();
+  state.chatHistory = [];
+  await saveState(state);
+  res.json({ ok: true, message: 'Chat history cleared' });
+});
+
 export default router;

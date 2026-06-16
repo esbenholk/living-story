@@ -50,24 +50,25 @@ export const HERO_TAGS = [
       "The path resists. Something must be overcome, endured, or outmanoeuvred. Focus on friction, effort, and the texture of difficulty. Write with grit and physical urgency.",
     svg: "challenge.svg",
   },
-  {
-    id: "abby",
-    day: 5,
-    label: "The Abyss",
-    names: "The Abyss / The Dark / The Unknown / The Loss of Faith",
-    prompt:
-      "The lowest point. The hero is stripped of certainty. Focus on doubt, darkness, and the silence before something changes. Write slowly, with weight. Let nothing be resolved.",
-    svg: "abby.svg",
-  },
-  {
+    {
     id: "ratava",
-    day: 6,
+    day: 5,
     label: "IN THEIR VILLAIN ERA",
     names: "The Villain (Era) / The Anti-Self / The Anti-Hero",
     prompt:
       "The shadow rises — within or without. This is the confrontation with the force that opposes growth. Focus on the seductive logic of the anti-self. Write with dangerous clarity.",
     svg: "ratava.svg",
   },
+  {
+    id: "abby",
+    day: 6,
+    label: "The Abyss",
+    names: "The Abyss / The Dark / The Unknown / The Loss of Faith",
+    prompt:
+      "The lowest point. The hero is stripped of certainty. Focus on doubt, darkness, and the silence before something changes. Write slowly, with weight. Let nothing be resolved.",
+    svg: "abby.svg",
+  },
+
   {
     id: "morph",
     day: 7,

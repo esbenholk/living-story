@@ -180,8 +180,8 @@ export function createMasterBot(token) {
       { parse_mode: "Markdown" });
   });
 
-  bot.on("polling_error", err =>
-    console.error("[MasterBot] Polling error:", err.message));
+  // bot.on("polling_error", err =>
+  //   console.error("[MasterBot] Polling error:", err.message));
 
   console.log("[MasterBot] Ready.");
   return bot;

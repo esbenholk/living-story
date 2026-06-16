@@ -156,83 +156,122 @@ export function applyUpdates(state, updates) {
   if (updates.summary)
     next.lastSummary = updates.summary;
 
+  if (updates.newHistory?.length) {
+    next.chatHistory = [
+      ...(next.chatHistory || []),
+      ...updates.newHistory,
+    ].slice(-40); // keep last 20 turns to avoid context overflow
+  }
+
   return next;
 }
 
 // ── Format state as LLM context ───────────────────────────────────────────
-
 export function formatStateForPrompt(state) {
-  const lines = [];
+  const parts = [];
 
-  // Grand arc position
-  const arcNames = ["","Hero","Quest","Mentor","Challenge","Abyss","Villain","Transformation","Reward"];
-  lines.push(`GRAND ARC: Day ${state.grandArcDay} — ${arcNames[state.grandArcDay] || "Unknown"} (chapter ${state.chaptersWritten + 1})`);
+  if (state.aliceTraits?.length)
+    parts.push(`Alice is: ${state.aliceTraits.slice(-5).join(", ")}`);
 
-  // Last chapter — immediate narrative continuity
-  if (state.lastChapter)
-    lines.push(`\nLAST CHAPTER (do NOT repeat any of these lines — write what happens NEXT):\n"${state.lastChapter}"\nThe next chapter must move the story forward. New sentence. New moment. New image.`);
+  if (state.aliceAppearance)
+    parts.push(`She looks like: ${state.aliceAppearance}`);
 
-  // Rolling summary — long-term memory
-  if (state.lastSummary)
-    lines.push(`\nSTORY SO FAR (summary):\n${state.lastSummary}`);
-
-  // Alice — compressed to prevent word-bank recycling
-  if (state.aliceTraits?.length || state.aliceAppearance) {
-    const traits = state.aliceTraits?.slice(-5).join(", ") || "unknown";
-    const exp    = state.aliceExperiences?.slice(-3).join("; ") || "";
-    lines.push(`\nOMNI-ALICE (context only — do not echo this language in the chapter):`);
-    if (state.aliceAppearance) lines.push(`  Look: ${state.aliceAppearance}`);
-    lines.push(`  Core traits: ${traits}`);
-    if (exp) lines.push(`  Recent: ${exp}`);
+  if (state.npcs?.length) {
+    const named = state.npcs.filter(n => n.name).slice(-3);
+    if (named.length)
+      parts.push(`Known companions: ${named.map(n => `${n.name} (${n.role})`).join(", ")}`);
   }
 
-  // Villain — compressed
-  if (state.villainTraits?.length || state.villainName) {
-    const vtraits = state.villainTraits?.slice(-3).join(", ") || "unknown";
-    lines.push(`\nTHE VILLAIN${state.villainName ? ` (${state.villainName})` : ""} (context only — do not echo this language):`);
-    if (state.villainAppearance) lines.push(`  Look: ${state.villainAppearance}`);
-    lines.push(`  Core traits: ${vtraits}`);
+  if (state.conspiracySeeds?.length)
+    parts.push(`Conspiracy evidence so far: ${state.conspiracySeeds.slice(-3).join(" / ")}`);
+
+  if (state.beliefs?.length)
+    parts.push(`Alice believes: ${state.beliefs.slice(-2).join(". ")}`);
+
+  if (state.summary)
+    parts.push(`Story so far: ${state.summary}`);
+
+  if (state.openThreads?.length) {
+    const recent = state.openThreads.slice(-4);
+    parts.push(`Open story threads (these must eventually pay off):\n${
+      recent.map(t => `- ${t}`).join("\n")
+    }`);
   }
 
-  // Active NPCs
-  const activeNpcs = (state.npcs || []).filter(n => n.active);
-  if (activeNpcs.length) {
-    lines.push(`\nACTIVE COMPANIONS:`);
-    for (const n of activeNpcs)
-      lines.push(`  • ${n.name} [${n.allegiance}]${n.traits ? ` — ${n.traits}` : ""}`);
-  }
-
-  // Open quests
-  const openQuests = (state.quests || []).filter(q => q.status === "open");
-  if (openQuests.length) {
-    lines.push(`\nOPEN SIDEQUESTS:`);
-    for (const q of openQuests) lines.push(`  • ${q.description}`);
-  }
-
-  // Open challenges
-  const openChallenges = (state.challenges || []).filter(c => c.status === "open");
-  if (openChallenges.length) {
-    lines.push(`\nUNRESOLVED CHALLENGES:`);
-    for (const c of openChallenges) lines.push(`  • ${c.description}`);
-  }
-
-  // Beliefs (highlight inverted ones)
-  const beliefs = (state.beliefs || []);
-  if (beliefs.length) {
-    lines.push(`\nESTABLISHED TRUTHS:`);
-    for (const b of beliefs)
-      lines.push(`  ${b.inverted ? "⚠️ [INVERTED] " : ""}${b.statement}`);
-  }
-
-  // Active threads
-  const activeThreads = (state.threads || []).filter(t => t.status === "active");
-  if (activeThreads.length) {
-    lines.push(`\nACTIVE STORYLINES:`);
-    for (const t of activeThreads) lines.push(`  • ${t.description}`);
-  }
-
-  return lines.join("\n");
+  return parts.join("\n");
 }
+// export function formatStateForPrompt(state) {
+//   const lines = [];
+
+//   // Grand arc position
+//   const arcNames = ["","Hero","Quest","Mentor","Challenge","Abyss","Villain","Transformation","Reward"];
+//   lines.push(`GRAND ARC: Day ${state.grandArcDay} — ${arcNames[state.grandArcDay] || "Unknown"} (chapter ${state.chaptersWritten + 1})`);
+
+//   // Last chapter — immediate narrative continuity
+//   if (state.lastChapter)
+//     lines.push(`\nLAST CHAPTER (do NOT repeat any of these lines — write what happens NEXT):\n"${state.lastChapter}"\nThe next chapter must move the story forward. New sentence. New moment. New image.`);
+
+//   // Rolling summary — long-term memory
+//   if (state.lastSummary)
+//     lines.push(`\nSTORY SO FAR (summary):\n${state.lastSummary}`);
+
+//   // Alice — compressed to prevent word-bank recycling
+//   if (state.aliceTraits?.length || state.aliceAppearance) {
+//     const traits = state.aliceTraits?.slice(-5).join(", ") || "unknown";
+//     const exp    = state.aliceExperiences?.slice(-3).join("; ") || "";
+//     lines.push(`\nOMNI-ALICE (context only — do not echo this language in the chapter):`);
+//     if (state.aliceAppearance) lines.push(`  Look: ${state.aliceAppearance}`);
+//     lines.push(`  Core traits: ${traits}`);
+//     if (exp) lines.push(`  Recent: ${exp}`);
+//   }
+
+//   // Villain — compressed
+//   if (state.villainTraits?.length || state.villainName) {
+//     const vtraits = state.villainTraits?.slice(-3).join(", ") || "unknown";
+//     lines.push(`\nTHE VILLAIN${state.villainName ? ` (${state.villainName})` : ""} (context only — do not echo this language):`);
+//     if (state.villainAppearance) lines.push(`  Look: ${state.villainAppearance}`);
+//     lines.push(`  Core traits: ${vtraits}`);
+//   }
+
+//   // Active NPCs
+//   const activeNpcs = (state.npcs || []).filter(n => n.active);
+//   if (activeNpcs.length) {
+//     lines.push(`\nACTIVE COMPANIONS:`);
+//     for (const n of activeNpcs)
+//       lines.push(`  • ${n.name} [${n.allegiance}]${n.traits ? ` — ${n.traits}` : ""}`);
+//   }
+
+//   // Open quests
+//   const openQuests = (state.quests || []).filter(q => q.status === "open");
+//   if (openQuests.length) {
+//     lines.push(`\nOPEN SIDEQUESTS:`);
+//     for (const q of openQuests) lines.push(`  • ${q.description}`);
+//   }
+
+//   // Open challenges
+//   const openChallenges = (state.challenges || []).filter(c => c.status === "open");
+//   if (openChallenges.length) {
+//     lines.push(`\nUNRESOLVED CHALLENGES:`);
+//     for (const c of openChallenges) lines.push(`  • ${c.description}`);
+//   }
+
+//   // Beliefs (highlight inverted ones)
+//   const beliefs = (state.beliefs || []);
+//   if (beliefs.length) {
+//     lines.push(`\nESTABLISHED TRUTHS:`);
+//     for (const b of beliefs)
+//       lines.push(`  ${b.inverted ? "⚠️ [INVERTED] " : ""}${b.statement}`);
+//   }
+
+//   // Active threads
+//   const activeThreads = (state.threads || []).filter(t => t.status === "active");
+//   if (activeThreads.length) {
+//     lines.push(`\nACTIVE STORYLINES:`);
+//     for (const t of activeThreads) lines.push(`  • ${t.description}`);
+//   }
+
+//   return lines.join("\n");
+// }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -43,23 +43,24 @@ Visual details from a photograph: {analysis}
 Story so far: {story_so_far}
 Write a small chapter in less than 300 characters. Do not include a title line. Begin mid-scene.`,
   },
+
   {
     day: 5,
-    headline: "VOOOOOOOOOOIIIIID",
-    tone: "tense, rupturing — something shifts or breaks irreversibly",
+    headline: "Entering your Villain Era",
+    tone: "quiet and reckoning — counting what remains after rupture",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
-Today is Day 5. A turning point. Something breaks — weather, trust, or silence.
+Today is Day 6. The storm has passed. The traveller surveys what survived.
 Tone: {tone}
 Visual details from a photograph: {analysis}
 Story so far: {story_so_far}
 Write a small chapter in less than 300 characters. Do not include a title line. Begin mid-scene.`,
   },
-  {
+    {
     day: 6,
-    headline: "Entering your Villain Era",
-    tone: "quiet and reckoning — counting what remains after rupture",
+    headline: "VOOOOOOOOOOIIIIID",
+    tone: "tense, rupturing — something shifts or breaks irreversibly",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
-Today is Day 6. The storm has passed. The traveller surveys what survived.
+Today is Day 5. A turning point. Something breaks — weather, trust, or silence.
 Tone: {tone}
 Visual details from a photograph: {analysis}
 Story so far: {story_so_far}
