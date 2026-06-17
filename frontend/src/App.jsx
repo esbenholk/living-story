@@ -9,7 +9,7 @@ import { useStory } from "./hooks/useStory.js";
 import { useSocket } from "./hooks/useSocket.js";
 import InfoOverlay from "./components/InfoOverlay.jsx";
 
-const panelLabels = ["SUBMIT", "THE PLOT", "THE SAGA"];
+const panelLabels = ["SUBMIT", "THE FEED", "THE SAGA"];
 
 const HEALTH_INTERVAL = 30_000;
 

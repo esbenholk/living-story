@@ -138,6 +138,13 @@ export default function UploadAside({
   const inputRef = useRef();
   const doneTimer = useRef(null);
 
+
+    // ── Derived responsive values ──
+  const isMobile = window.innerWidth < 600;
+
+
+  
+
   useEffect(() => {
     if (currentDay && !userHasChosen)
       setSelectedTag(defaultTagForDay(currentDay));
@@ -260,335 +267,386 @@ export default function UploadAside({
         borderColor={tickerBorderColor}
       />
 
-    
-      <h1>{currentConfig?.headline}</h1>
+      
+
+
+
+        
    
-      <div className="flex"></div>
-      <div>
-        {/* ── Drop zone ─────────────────────────────────────────────── */}
-        {!servicesReady ? (
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 320,
-              aspectRatio: "1",
-              border: `2px solid var(--red)`,
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundImage: "url('placeholder.gif')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            {servicesChecking ? (
-              "Checking services..."
-            ) : (
-              <div
+        <div style={{position: "fixed", top:0,bottom:0,left:0,right:0, padding: "50px", display: "flex", flexDirection: "column", justifyContent: "space-between"}}>
+            <h1 style={{minHeight: isMobile ? "150px" : "none", margin:0}}>{currentConfig?.headline}</h1>
+            <div id="mainUploader"
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    flexGrow: isMobile ? 0 : 1,
+                    minHeight: 0,
+                    gap: isMobile ? 20 : 24,
+                    alignItems: "stretch",
+                    justifyContent: "space-between",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: isMobile ? "100%" : "50%",
+                      flex: isMobile ? "0 0 auto" : "0 0 50%",
+                      minHeight: 0,
+                      display: "flex",
+                    }}
+                  >
+                {/* ── Drop zone ─────────────────────────────────────────────── */}
+                {!servicesReady ? (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: isMobile ? undefined : "100%",
+                      maxHeight: isMobile ? undefined : "100%",
+                      aspectRatio: isMobile ? "1 / 1" : "auto",
+                      border: `2px solid var(--red)`,
+                      borderRadius: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundImage: "url('placeholder.gif')",
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {servicesChecking ? (
+                      "Checking services..."
+                    ) : (
+                      <div
+                        style={{
+                          backgroundColor: "var(--blue)",
+                          margin: "var(--borderwidth)",
+                          padding: "var(--borderwidth)",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          alignContent: "center",
+                          alignItems: "center",
+                          textAlign: "center",
+                        }}
+                      >
+                        <p>excuse the inconvenience:</p>
+                        <p>slop plot temporarily down</p>
+                        <p>{!serviceStatus.sidecar && "· Sidecar offline ·"}</p>
+                        <p>{!serviceStatus.ollama && "· Ollama offline ·"}</p>
+                        <p>Services unavailable</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="uploaderImage"
+                    onClick={() => !busy && !isDone && inputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragging(false);
+                      if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
+                    }}
+                    style={{
+                      width: "100%",
+                      height: isMobile ? undefined : "100%",
+                      maxHeight: isMobile ? undefined : "100%",
+                      aspectRatio: isMobile ? "1 / 1" : "auto",
+                      border: `${dragging ? "2px dashed var(--red)" : isDone ? "2px solid var(--highlight)" : preview ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
+                      borderRadius: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: busy || isDone ? "default" : "pointer",
+                      transition: "border-color 0.2s",
+                      backgroundImage:
+                        preview || isDone ? "none" : "url('placeholder.gif')",
+
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isDone ? (
+                      // ── Thank you state ──────────────────────────────────────
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          textAlign: "center",
+                          padding: 28,
+                          gap: 20,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--highlight)",
+                            letterSpacing: 3,
+                            textTransform: "uppercase",
+                            lineHeight: 2,
+                          }}
+                        >
+                          thank you for your memory
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "white",
+                            letterSpacing: 2,
+                            textTransform: "uppercase",
+                            lineHeight: 2,
+                            opacity: 0.6,
+                            animation: "text-pulse 2.4s ease-in-out infinite",
+                          }}
+                        >
+                          the slop plot machine
+                          <br />
+                          is processing it
+                        </div>
+                      </div>
+                    ) : preview ? (
+                      // ── Preview image ────────────────────────────────────────
+                      <img
+                        src={preview}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          animation: isUploading
+                            ? "preview-pulse 2.6s ease-in-out infinite"
+                            : "none",
+                          transition: "opacity 0.3s",
+                        }}
+                        alt="preview"
+                      />
+                    ) : (
+                      // ── Empty state ──────────────────────────────────────────
+                      <div style={{ textAlign: "center", padding: 20 }}>
+                        <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "var(--highlight)",
+                            background: "rgba(0,0,0,1)",
+                            padding: "4px 12px",
+                          }}
+                        >
+                          Tap to submit a memory
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      style={{ display: "none" }}
+                      onChange={(e) => handleFile(e.target.files[0])}
+                    />
+                  </div>
+                )}
+              </div>
+            <div
                 style={{
-                  backgroundColor: "var(--blue)",
-                  margin: "var(--borderwidth)",
-                  padding: "var(--borderwidth)",
+                  width: isMobile ? "100%" : "50%",
+                  flex: isMobile ? "0 0 auto" : "1 1 50%",
+                  minHeight: 0,
                   display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignContent: "center",
-                  alignItems: "center",
-                  textAlign: "center",
                 }}
               >
-                <p>excuse the inconvenience:</p>
-                <p>slop plot temporarily down</p>
-                <p>{!serviceStatus.sidecar && "· Sidecar offline ·"}</p>
-                <p>{!serviceStatus.ollama && "· Ollama offline ·"}</p>
-                <p>Services unavailable</p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "repeat(4, minmax(0, 1fr))"
+                      : "repeat(2, minmax(0, 1fr))",
+                    gridAutoRows: isMobile ? "auto" : "minmax(0, 1fr)",
+                    gap: 6,
+                    width: "100%",
+                    height: isMobile ? "auto" : "100%",
+                    minHeight: 0,
+                  }}
+                >
+                    {HERO_TAGS.map((tag) => {
+                      const isSelected = selectedTag?.id === tag.id;
+                      const isDefault = tag.day === currentDay;
+                      return (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            setSelectedTag(tag);
+                            setUserHasChosen(true);
+                          }}
+                          title={tag.names}
+                          disabled={busy || isDone}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 5,
+                            width: "100%",
+                            height: isMobile ? "auto" : "100%",
+                            minHeight: 0,
+                            background: "rgba(0,0,0,0)",
+                            border: "0px solid rgba(0,0,0,0)",
+                            borderRadius: 6,
+                            cursor: busy || isDone ? "default" : "pointer",
+                            transition: "all 0.15s ease",
+                            position: "relative",
+                          }}
+                        >
+                          {isDefault && !isSelected && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                                width: 4,
+                                height: 4,
+                                borderRadius: "50%",
+                                background: "var(--red)",
+                              }}
+                            />
+                          )}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              maxHeight: "100%",
+                              filter:
+                                isSelected && userHasChosen
+                                  ? "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)"
+                                  : isDefault && !userHasChosen
+                                    ? "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)"
+                                    : "none",
+                            }}
+                          >
+                              <img
+                                src={`/tags/${tag.svg}`}
+                                alt={tag.label}
+                                style={{
+                                  display: "block",
+                                  width: isMobile ? 50 : "100%",
+                                  height: isMobile ? 50 : "100%",
+                                  maxWidth: isMobile ? 50 : "100%",
+                                  maxHeight: isMobile ? 50 : "100%",
+                                  objectFit: "contain",
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  e.currentTarget.nextSibling.style.display = "block";
+                                }}
+                              />
+                            <span
+                              style={{
+                                display: "none",
+                                fontSize: 16,
+                                color: isSelected ? "#fff" : "var(--red)",
+                              }}
+                            >
+                              {tag.day}
+                              {tag.id}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div
-            className="uploaderImage"
-            onClick={() => !busy && !isDone && inputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              if (!busy && !isDone) handleFile(e.dataTransfer.files[0]);
-            }}
-            style={{
-              width: "100%",
-              maxWidth: 320,
-              aspectRatio: "1",
-              border: `${dragging ? "2px dashed var(--red)" : isDone ? "2px solid var(--highlight)" : preview ? "2px solid var(--highlight)" : "2px solid var(--red)"}`,
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: busy || isDone ? "default" : "pointer",
-              transition: "border-color 0.2s",
-              backgroundImage:
-                preview || isDone ? "none" : "url('placeholder.gif')",
-
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
+            </div>
+            {/* ── Submit / Done buttons ────────────────────────────────────── */}
             {isDone ? (
-              // ── Thank you state ──────────────────────────────────────
-              <div
+              <button
+                onClick={() => {
+                  onGoToStory();
+                  reset();
+                }}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  padding: 28,
-                  gap: 20,
+                  marginTop: 14,
+                  padding: "14px 0",
+                  background: "var(--highlight)",
+                  color: "var(--blue)",
+                  border: "var(--borderwidth) solid var(--highlight)",
+                  borderRadius: 2,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  width: "calc(100% - 90px)",
+                  maxWidth: 320,
+                  transition: "0.2s",
+                  position: "absolute",
+                  bottom: 45,
+                  animation: "frame-flash 0.6s ease-in-out infinite",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--highlight)",
-                    letterSpacing: 3,
-                    textTransform: "uppercase",
-                    lineHeight: 2,
-                  }}
-                >
-                  thank you for your memory
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "white",
-                    letterSpacing: 2,
-                    textTransform: "uppercase",
-                    lineHeight: 2,
-                    opacity: 0.6,
-                    animation: "text-pulse 2.4s ease-in-out infinite",
-                  }}
-                >
-                  the slop plot machine
-                  <br />
-                  is processing it
-                </div>
-              </div>
-            ) : preview ? (
-              // ── Preview image ────────────────────────────────────────
-              <img
-                src={preview}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  animation: isUploading
-                    ? "preview-pulse 2.6s ease-in-out infinite"
-                    : "none",
-                  transition: "opacity 0.3s",
-                }}
-                alt="preview"
-              />
+                Read the Saga →
+              </button>
             ) : (
-              // ── Empty state ──────────────────────────────────────────
-              <div style={{ textAlign: "center", padding: 20 }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--highlight)",
-                    background: "rgba(0,0,0,1)",
-                    padding: "4px 12px",
-                  }}
-                >
-                  Tap to submit a memory
-                </div>
-              </div>
-            )}
-
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: "none" }}
-              onChange={(e) => handleFile(e.target.files[0])}
-            />
-          </div>
-        )}
-      </div>
-      {/* ── Tag selector ─────────────────────────────────────────────── */}
-      <div style={{ width: "100%", maxWidth: "calc(100%)", marginTop: 20 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 6,
-          }}
-        >
-          {HERO_TAGS.map((tag) => {
-            const isSelected = selectedTag?.id === tag.id;
-            const isDefault = tag.day === currentDay;
-            return (
+              <div>
+              <p style={{fontFamily: "system-ui", fontSize: 10}}>****this is a participatory software artwork that runs on images. Share only images you have the right to use. By submitting them, you agree that they may become part of a public artwork shown at Roskilde Festival and online.</p>
               <button
-                key={tag.id}
-                onClick={() => {
-                  setSelectedTag(tag);
-                  setUserHasChosen(true);
-                }}
-                title={tag.names}
-                disabled={busy || isDone}
+                onClick={handleSubmit}
+                disabled={!canSubmit}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                  background: "rgba(0,0,0,0)",
-                  border: "0px solid rgba(0,0,0,0)",
-                  borderRadius: 6,
-                  cursor: busy || isDone ? "default" : "pointer",
-                  transition: "all 0.15s ease",
+                  marginTop: 14,
+                  padding: "14px 2px",
+                  background: isUploading
+                    ? `linear-gradient(to right, var(--highlight) ${progress}%, transparent ${progress}%)`
+                    : canSubmit
+                      ? "var(--highlight)"
+                      : "transparent",
+                  color: "var(--red)",
+                  border: canSubmit
+                    ? "var(--borderwidth) solid var(--red)"
+                    : "2px solid white",
+                  borderRadius: 2,
+                  fontSize: !selectedTag ? 10 : 15,
+                  fontWeight: 400,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  width: "100%",
+            
+                  transition: "0.2s",
                   position: "relative",
                 }}
               >
-                {isDefault && !isSelected && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 4,
-                      right: 4,
-                      width: 4,
-                      height: 4,
-                      borderRadius: "50%",
-                      background: "var(--red)",
-                    }}
-                  />
-                )}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    filter:
-                      isSelected && userHasChosen
-                        ? "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)"
-                        : isDefault && !userHasChosen
-                          ? "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)"
-                          : "none",
-                  }}
-                >
-                  <img
-                    src={`/tags/${tag.svg}`}
-                    alt={tag.label}
-                    width={50}
-                    height={50}
-                    style={{ display: "block" }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.nextSibling.style.display = "block";
-                    }}
-                  />
-                  <span
-                    style={{
-                      display: "none",
-                      fontSize: 16,
-                      color: isSelected ? "#fff" : "var(--red)",
-                    }}
-                  >
-                    {tag.day}
-                    {tag.id}
-                  </span>
-                </div>
+                {!selectedTag ? "pick a tag to continue" : buttonLabel}
               </button>
-            );
-          })}
+              </div>
+            )}
+
+            {status === "error" && (
+              <p
+                style={{
+                  marginTop: 10,
+                  fontSize: 11,
+                  color: "var(--red)",
+                  position: "absolute",
+                  bottom: 100,
+                }}
+              >
+                Something went wrong. Try again.
+              </p>
+            )}
         </div>
-      </div>
+     
 
-      {/* ── Submit / Done buttons ────────────────────────────────────── */}
-      {isDone ? (
-        <button
-          onClick={() => {
-            onGoToStory();
-            reset();
-          }}
-          style={{
-            marginTop: 14,
-            padding: "14px 0",
-            background: "var(--highlight)",
-            color: "var(--blue)",
-            border: "var(--borderwidth) solid var(--highlight)",
-            borderRadius: 2,
-            fontSize: 15,
-            fontWeight: 700,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            cursor: "pointer",
-            width: "calc(100% - 90px)",
-            maxWidth: 320,
-            transition: "0.2s",
-            position: "absolute",
-            bottom: 45,
-            animation: "frame-flash 0.6s ease-in-out infinite",
-          }}
-        >
-          Read the Saga →
-        </button>
-      ) : (
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          style={{
-            marginTop: 14,
-            padding: "14px 0",
-            background: isUploading
-              ? `linear-gradient(to right, var(--highlight) ${progress}%, transparent ${progress}%)`
-              : canSubmit
-                ? "var(--highlight)"
-                : "transparent",
-            color: "var(--red)",
-            border: canSubmit
-              ? "var(--borderwidth) solid var(--red)"
-              : "2px solid white",
-            borderRadius: 2,
-            fontSize: 15,
-            fontWeight: 400,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            width: "calc(100% - 90px)",
-            maxWidth: 320,
-            transition: "0.2s",
-            position: "absolute",
-            bottom: 45,
-          }}
-        >
-          {!selectedTag ? "pick a tag to continue" : buttonLabel}
-        </button>
-      )}
-
-      {status === "error" && (
-        <p
-          style={{
-            marginTop: 10,
-            fontSize: 11,
-            color: "var(--red)",
-            position: "absolute",
-            bottom: 100,
-          }}
-        >
-          Something went wrong. Try again.
-        </p>
-      )}
 
       <style>{`
         ${FRAME_CSS}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import { HERO_TAGS } from "../config/heroTags.js";
 import Ticker from "./Ticker.jsx";
 import TagIcon from "./TagIcon.jsx";
@@ -145,8 +145,11 @@ function DayDivider({ day, tag, currentDay }) {
         <img
           src={`/tags/${tag.svg}`}
           alt={tag.label}
-          width="100%"
-          height="auto"
+          style={{
+            width: "100%",
+            maxWidth: "300px",
+            height: "auto",
+          }}
         />
       )}
       <div style={{
@@ -177,6 +180,110 @@ function DayDivider({ day, tag, currentDay }) {
   );
 }
 
+// ── Meme overlay ──────────────────────────────────────────────────────────
+
+function MemeOverlay({ image, text, onClose }) {
+  // Close on Escape + lock body scroll while open
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        inset: 0,
+        margin: "10px",
+        zIndex: 2,
+        background: "rgba(0,0,0,0.92)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+
+      }}
+    >
+      {/* Full stretched cover image */}
+      {image && (
+        <img
+          src={image}
+          alt=""
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "fill",
+          }}
+          onError={e => { e.currentTarget.style.display = "none"; }}
+        />
+      )}
+
+      {/* Meme text overlay */}
+      {text && (
+        <div style={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          padding: "0 5vw",
+          textAlign: "center",
+          fontFamily: "Impact, system-ui, sans-serif",
+          fontWeight: 900,
+          textTransform: "uppercase",
+          color: "#fff",
+          fontSize: "clamp(28px, 7vw, 90px)",
+          lineHeight: 1.05,
+          letterSpacing: 1,
+          WebkitTextStroke: "1px var(--red)",
+          textShadow: "0 2px 10px rgba(0,0,0,0.65)",
+          pointerEvents: "none",
+        }}>
+          {replaceAlice(text)}
+        </div>
+      )}
+
+
+        
+            <button
+              onClick={e => { e.stopPropagation(); onClose(); }}
+              style={{
+                cursor: "pointer",
+                position: "absolute",
+                bottom: -5,
+                left: -5,
+                border: `2px solid var(--red)`,
+                background: "var(--blue)",
+                color: "white",
+                fontFamily: "system-ui",
+                fontWeight: 800,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                padding: "8px 14px",
+                borderRadius: 999,
+              }}
+            >
+              Vers
+            </button>
+       
+
+
+    </div>
+  );
+}
+
 // ── Chapter card ──────────────────────────────────────────────────────────
 
 function ChapterCard({ chapter, colors }) {
@@ -187,10 +294,16 @@ function ChapterCard({ chapter, colors }) {
 
   const tag = getTagForEvent(chapter);
 
+  // ── Meme overlay state ──
+  const [memeOpen, setMemeOpen] = useState(false);
+  const memeImage = chapter.uploadEvent?.cloudinaryUrl;
+  const memeText = chapter.uploadEvent?.analysisRaw?.memeText;
+  const hasMeme = Boolean(memeImage && memeText);
+
 
   
   return (
-    <>
+    <div style={{position: "relative"}}>
     <div style={{
       background: colors.container,
       overflow: "hidden",
@@ -199,6 +312,7 @@ function ChapterCard({ chapter, colors }) {
       border: `5px solid ${colors.headline}`,
       borderBottom: "0px solid red",
       padding: "5px 5px",
+      position: "relative"
     }}>
         {/* ── Cutout image ── */}
         {cutout && (
@@ -271,7 +385,7 @@ function ChapterCard({ chapter, colors }) {
           fontSize: 30,
           fontWeight: 800,
           color: colors.headline,
-          fontFamily: "system-ui",
+
           letterSpacing: 0.5,
           textTransform: "uppercase",
           lineHeight: 1.3,
@@ -286,6 +400,7 @@ function ChapterCard({ chapter, colors }) {
       <div style={{ background: colors.headline, padding: "5px 5px"}}>
         <p style={{
           fontSize: 17,
+                    fontFamily: "system-ui",
           color: colors.text,
           margin: 0,
           lineHeight: 0.8,
@@ -294,16 +409,55 @@ function ChapterCard({ chapter, colors }) {
           {cleanText(chapter.text)}
         </p>
 
-        {tag && (
-              <div
-                style={{marginTop: "20px", display: "flex", width: "100%", justifyContent: "flex-end"}}
-              >
-                <TagIcon tag={tag} color={"white"} size={32} />
-              </div>
-        )}
-    
+        {/* ── Footer row: meme button (bottom-left) + tag (bottom-right) ── */}
+        <div style={{
+          marginTop: 20,
+          display: "flex",
+          width: "100%",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          {hasMeme ? (
+            <button
+              onClick={() => setMemeOpen(true)}
+              style={{
+                cursor: "pointer",
+                border: `2px solid ${colors.text}`,
+                background: colors.text,
+                color: colors.headline,
+                fontFamily: "system-ui",
+                fontWeight: 800,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                padding: "8px 14px",
+                borderRadius: 999,
+              }}
+            >
+              Meme
+            </button>
+          ) : <span />}
+
+          {tag ? (
+            <TagIcon tag={tag} color={"white"} size={32} />
+          ) : <span />}
+        </div>
+
+        {/* ── meme-overlay ── */}
+   
+        
     </div>
-    </>
+
+         {memeOpen && (
+          <MemeOverlay
+            image={memeImage}
+            text={memeText}
+            onClose={() => setMemeOpen(false)}
+          />
+        )}
+
+
+    </div>
   );
 }
 

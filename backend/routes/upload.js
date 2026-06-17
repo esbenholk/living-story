@@ -110,15 +110,19 @@ router.post("/upload", upload, async (req, res) => {
         // LLaVA descriptions
         let descriptionShort = null;
         let descriptionLong  = null;
+        let memeText         = null;
         try {
-          [descriptionShort, descriptionLong] = await Promise.all([
+          const [shortResult, longResult] = await Promise.all([
             describeImageShort(secure_url).catch(() => null),
             describeImageLong(secure_url).catch(() => null),
           ]);
+          descriptionShort = shortResult?.caption  ?? null;
+          memeText         = shortResult?.memeText ?? null;
+          descriptionLong  = longResult;
         } catch (e) {
           console.warn("[UPLOAD] LLaVA descriptions failed:", e.message);
         }
-
+ 
         // Load state + generate chapter
         const config   = getChapterConfig(day);
         const state    = await loadState();
@@ -149,10 +153,11 @@ router.post("/upload", upload, async (req, res) => {
           where: { id: event.id },
           data:  {
             cutouts,
-            analysisRaw: {
+              analysisRaw: {
               ...cloudResult,
               descriptionShort,
               descriptionLong,
+              memeText,
               heroTagId: heroTag.id,
             },
           },
@@ -171,6 +176,7 @@ router.post("/upload", upload, async (req, res) => {
         updateContext(publicIds, {
           description_short: descriptionShort || "",
           description_long:  descriptionLong  || "",
+          meme_text:         memeText         || "",
           chapter:           chapterText      || "",
           headline:          headlineText     || config.headline,
           day:               String(day),

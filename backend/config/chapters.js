@@ -1,7 +1,7 @@
 export const CHAPTER_CONFIG = [
   {
     day: 1,
-    headline: "WHO ARE YOU?",
+    headline: "WELCOME TO THE FESTIVAL -- WHO ARE WE?",
     tone: "wonder and disorientation — the world is new and unfamiliar",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 1. A traveller has just arrived somewhere completely unfamiliar.
@@ -12,7 +12,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
   {
     day: 2,
-    headline: "THE CALL IS COMING FROM INSIDE THE HOUSE",
+    headline: "NOT EVERYTHING IS AS IT SEEMS - SOMETHING WEIRD IS HAPPENING",
     tone: "observational, details sharpening into something slightly unsettling",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 2. The traveller is taking stock of their surroundings with fresh, careful eyes.
@@ -23,7 +23,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
   {
     day: 3,
-    headline: "SURROUNDED BY NPC'S",
+    headline: "GATHER A FELLOWSHIP! EVERYONE NEEDS A SIDEKICK!",
     tone: "bustling, sensory-rich — trade, exchange, unexpected encounter",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 3. The traveller enters a crowded, vibrant marketplace.
@@ -34,7 +34,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
   {
     day: 4,
-    headline: "AIN'T NO MOUNTAIN HIGH ENOUGH",
+    headline: "GOOD SAGAS HAVE BAD PROBLEMS: AIN'T NO MOUNTAIN HIGH ENOUGH",
     tone: "introspective and secretive — something lies beneath the surface",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 4. The traveller discovers something hidden — a room, a truth, a memory.
@@ -46,7 +46,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
 
   {
     day: 5,
-    headline: "Entering your Villain Era",
+    headline: "ENTER YOUR VILLAIN ERA",
     tone: "quiet and reckoning — counting what remains after rupture",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 6. The storm has passed. The traveller surveys what survived.
@@ -57,7 +57,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
     {
     day: 6,
-    headline: "VOOOOOOOOOOIIIIID",
+    headline: "NOTHING IS REAL! EVERYTHING IS SLOP! GET CONFUSED NOW NOW NOW",
     tone: "tense, rupturing — something shifts or breaks irreversibly",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 5. A turning point. Something breaks — weather, trust, or silence.
@@ -68,7 +68,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
   {
     day: 7,
-    headline: "NEW PERSPECTIVE - WHO DIS?",
+    headline: "TRANSFORMATION IS CUTE! DO IT FOR THE PLOT!",
     tone: "bittersweet — familiar things now feel permanently changed",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 7. The traveller moves toward something recognisable — home, a person, a former self.
@@ -79,7 +79,7 @@ Write a small chapter in less than 300 characters. Do not include a title line. 
   },
   {
     day: 8,
-    headline: "THE RETURN WE DESERVE",
+    headline: "GO HOME BABE. U DESERVE A TREAT!",
     tone: "elegiac and conclusive — the story settles into memory",
     promptTemplate: `You are the narrator of a magical realist story unfolding over 8 days.
 Today is Day 8, the final chapter. The journey ends.

@@ -17,7 +17,7 @@ export const HERO_TAGS = [
   {
     id: "avatar",
     day: 1,
-    label: "THE MAIN CHARACTER",
+    label: "PROTAGONIST",
     names: "The Avatar / The Main Character / The Self / The Hero",
     prompt:
       "This chapter introduces or re-centres the protagonist. Focus on identity, presence, and the inner world of the self. Who are they? What do they carry? Write from a place of embodied selfhood.",
@@ -26,7 +26,7 @@ export const HERO_TAGS = [
   {
     id: "quest",
     day: 2,
-    label: "THE QUEST",
+    label: "QUEST",
     names: "The Quest / The Disruption / The Call",
     prompt:
       "Something shifts. A threshold is crossed or beckons. Focus on the moment of rupture — the call that cannot be ignored, the world tilting on its axis. Write with restless forward energy.",
@@ -35,7 +35,7 @@ export const HERO_TAGS = [
   {
     id: "npc",
     day: 3,
-    label: "The Non Playable Characters",
+    label: "NPC",
     names: "The NPC / The Mentor / The Sidekick",
     prompt:
       "Another presence enters — a guide, a companion, a stranger who knows more than they should. Focus on connection, exchange, and the gift of being witnessed. Write with warmth and subtle mystery.",
@@ -44,7 +44,7 @@ export const HERO_TAGS = [
   {
     id: "challenge",
     day: 4,
-    label: "The Challenge",
+    label: "CHALLENGE",
     names: "The Challenge / The Obstacle",
     prompt:
       "The path resists. Something must be overcome, endured, or outmanoeuvred. Focus on friction, effort, and the texture of difficulty. Write with grit and physical urgency.",
@@ -53,7 +53,7 @@ export const HERO_TAGS = [
     {
     id: "ratava",
     day: 5,
-    label: "IN THEIR VILLAIN ERA",
+    label: "ANTAGONIST",
     names: "The Villain (Era) / The Anti-Self / The Anti-Hero",
     prompt:
       "The shadow rises — within or without. This is the confrontation with the force that opposes growth. Focus on the seductive logic of the anti-self. Write with dangerous clarity.",
@@ -62,7 +62,7 @@ export const HERO_TAGS = [
   {
     id: "abby",
     day: 6,
-    label: "The Abyss",
+    label: "ABYSS",
     names: "The Abyss / The Dark / The Unknown / The Loss of Faith",
     prompt:
       "The lowest point. The hero is stripped of certainty. Focus on doubt, darkness, and the silence before something changes. Write slowly, with weight. Let nothing be resolved.",
@@ -72,7 +72,7 @@ export const HERO_TAGS = [
   {
     id: "morph",
     day: 7,
-    label: "The Transformation",
+    label: "CHANGE",
     names: "The Transformation",
     prompt:
       "Something irreversible happens. The old self cannot continue. Focus on metamorphosis — the precise moment when identity cracks open and something new breathes in. Write with awe.",
@@ -81,7 +81,7 @@ export const HERO_TAGS = [
   {
     id: "dulapip",
     day: 8,
-    label: "THE REWARD",
+    label: "REWARD",
     names: "The Reward",
     prompt:
       "The journey completes its arc. What has been earned, understood, or accepted? Focus on arrival, integration, and the bittersweet taste of having changed. Write with earned stillness.",

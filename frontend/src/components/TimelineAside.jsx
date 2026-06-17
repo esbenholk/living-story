@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
-import { HERO_TAGS, defaultTagForDay } from "../config/heroTags.js";
 import Ticker from "./Ticker.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -19,20 +18,53 @@ function cloudinaryResize(url, width = 200) {
   return url.replace("/upload/", `/upload/w_${width},c_scale,q_auto,f_auto/`);
 }
 
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 // ── Layout constants ──────────────────────────────────────────────────────
 
-const SVG_W = 500;
-const ROW_H = 280;
 const TOP_PAD = 150;
 const BOTTOM_PAD = 100;
-const CARD_W = 180;
-const CARD_H = 80;
 const BEND_R = 16;
-const MARGIN = 40;
 const PAGE_SIZE = 50;
 
-const ELL_RX = CARD_W / 2;
-const ELL_RY = CARD_H / 2;
+// ── Responsive tuning (these are the knobs you asked about) ────────────────
+
+// Meme WIDTH — scales with the panel width, then capped:
+const MEME_W_FRAC = 0.8;   // meme width = this fraction of the panel width …
+const MEME_W_MIN = 120;     // … but never smaller than this …
+const MEME_W_MAX = 220;     // … and never larger than this.
+
+// Horizontal SCATTER — how wide the memes spread across the page:
+const SCATTER_SPAN = 0.55;  // ← THE SCATTER SPAN (fraction of panel width)
+const SCATTER_BIAS = 0.05;  // gentle alternating left/right nudge
+const EDGE = 12;            // keep memes at least this far from the side edges
+
+// Vertical SPACING — the min distance between memes (prevents overlap):
+const GAP_FRAC = 0.55;      // base gap = this fraction of the meme width …
+const GAP_MIN = 70;         // … but never tighter than this (px) …
+const GAP_JITTER = 0.45;    // … plus organic extra, up to this fraction of base.
+
+const DEFAULT_ASPECT = 1;   // assumed width/height until the image loads
+const MOBILE_BP = 600;      // panel narrower than this counts as "mobile"
+
+// Meta NOTES — small white labels beside each meme:
+const NOTE_GAP = 8;         // gap between the meme edge and the notes
+const NOTE_MIN_W = 40;      // hide the notes if there's less room than this
+const DESC_MAX_CHARS = 140; // hard cut-off for the description text
+const DESC_MAX_W = 200;     // desktop max width for the description (px)
 
 // ── Path builder ──────────────────────────────────────────────────────────
 
@@ -63,11 +95,38 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [scrollDay, setScrollDay] = useState(currentDay);
 
+  // Measured panel width — drives all the responsive sizing
+  const [W, setW] = useState(() =>
+    typeof window !== "undefined" ? Math.min(window.innerWidth, 500) : 420,
+  );
+  // Measured image aspect ratios (width / height), keyed by event
+  const [aspects, setAspects] = useState({});
+
   const visibleEvents = useMemo(
     () => events.slice(0, visibleCount),
     [events, visibleCount],
   );
   const hasMore = visibleCount < events.length;
+
+  // ── Derived responsive values ──
+  const isMobile = W < MOBILE_BP;
+  const memeW = useMemo(() => {
+    let w = clamp(W * MEME_W_FRAC, MEME_W_MIN, MEME_W_MAX);
+    w = Math.min(w, W - 2 * EDGE); // never wider than the panel
+    return Math.round(w);
+  }, [W]);
+  const captionFont = isMobile ? 16 : 30;
+
+  // ── Measure the panel width (responsive to device) ──
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const apply = () => setW(el.clientWidth || 420);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!isActive || !scrollRef.current) return;
@@ -95,7 +154,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
         if (ev) setScrollDay(ev.day);
       }
     },
-    { 
+    {
       root,
       rootMargin: "-80px 0px 0px 0px", // ← exclude the sticky header height from top
       threshold: 0.3,
@@ -110,34 +169,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     if (currentDay) setScrollDay(currentDay);
   }, [currentDay]);
 
-  // ── Layout — rx/ry computed here so cx can use them ──────────────────
-  const laid = useMemo(() => {
-    const rng = seededRng(7);
-    return visibleEvents.map((ev, i) => {
-      // Size first
-      const sizeRng = seededRng((i + 1) * 137);
-      const rx = ELL_RX * (0.8 + sizeRng() * 1.0);
-      const ry = ELL_RY * (0.8 + sizeRng() * 1.0);
-
-      // Position — clamp cx using actual rx
-      const side = i % 2 === 0 ? -1 : 1;
-      const xBias = side * (SVG_W * 0.05);
-      const xJitter = (rng() - 0.5) * (SVG_W * 0.55);
-      const rawX = SVG_W / 2 + xBias + xJitter;
-      const cx = Math.max(
-        rx + MARGIN,
-        Math.min(SVG_W - rx - MARGIN, rawX),
-      );
-
-      const yJitter = (rng() - 0.5) * ROW_H * 0.7;
-      const cy = TOP_PAD + i * ROW_H + yJitter;
-
-      return { ev, i, cx, cy, rx, ry };
-    });
-  }, [visibleEvents]);
-
-  // ── Flicker image pool ────────────────────────────────────────────────────
-
+  // ── Flicker image pool ────────────────────────────────────────────────
   const [flickerUrl, setFlickerUrl] = useState(null);
   const [flickerVisible, setFlickerVisible] = useState(false);
   const flickerPoolRef = useRef([]);
@@ -146,13 +178,9 @@ export default function TimelineAside({ events, currentDay, isActive }) {
 
   // Keep pool in sync with visible events
   useEffect(() => {
-    const urls = visibleEvents
-      .map(ev => ev.cloudinaryUrl)
+    flickerPoolRef.current = visibleEvents
+      .map((ev) => ev.cloudinaryUrl)
       .filter(Boolean);
-    flickerPoolRef.current = urls;
-
-    console.log("searching for event url", urls);
-    
   }, [visibleEvents]);
 
   // Start/stop the flicker interval on scroll
@@ -163,17 +191,13 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     function startFlicker() {
       if (flickerIntervalRef.current) return; // already running
       setFlickerVisible(true);
-
-      // Pick immediately, then on interval
       const pick = () => {
         const pool = flickerPoolRef.current;
         if (!pool.length) return;
-        const url = pool[Math.floor(Math.random() * pool.length)];
-        setFlickerUrl(url);
+        setFlickerUrl(pool[Math.floor(Math.random() * pool.length)]);
       };
-
       pick();
-      flickerIntervalRef.current = setInterval(pick, 12); // flicker speed in ms
+      flickerIntervalRef.current = setInterval(pick, 12); // flicker speed (ms)
     }
 
     function stopFlicker() {
@@ -196,18 +220,59 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     };
   }, []);
 
+  // Record each image's real aspect ratio once it loads → drives its height
+  const handleImgLoad = (key) => (e) => {
+    const img = e.currentTarget;
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    const ratio = img.naturalWidth / img.naturalHeight;
+    setAspects((prev) => (prev[key] === ratio ? prev : { ...prev, [key]: ratio }));
+  };
+
+  // ── Layout — vertical stacking so memes never overlap ──────────────────
+  const laid = useMemo(() => {
+    const rng = seededRng(7);
+    const items = [];
+    let cursor = TOP_PAD; // running y = bottom edge of the previous meme
+
+    // Min distance: responsive to device width (memeW) …
+    const baseGap = Math.max(GAP_MIN, memeW * GAP_FRAC);
+
+    for (let i = 0; i < visibleEvents.length; i++) {
+      const ev = visibleEvents[i];
+      const key = ev.id ?? i;
+
+      // … and responsive to image height (its own proportions)
+      const aspect = aspects[key] || DEFAULT_ASPECT;
+      const h = memeW / aspect;
+      const halfH = h / 2;
+
+      // Horizontal scatter
+      const side = i % 2 === 0 ? -1 : 1;
+      const rawX =
+        W / 2 + side * W * SCATTER_BIAS + (rng() - 0.5) * W * SCATTER_SPAN;
+      const cx = clamp(rawX, memeW / 2 + EDGE, W - memeW / 2 - EDGE);
+
+      // Vertical placement: previous bottom + gap + this meme's half height
+      const gap = baseGap * (1 + rng() * GAP_JITTER);
+      const cy = i === 0 ? TOP_PAD + halfH : cursor + gap + halfH;
+      cursor = cy + halfH;
+
+      items.push({ ev, i, key, cx, cy, w: memeW, h, halfH });
+    }
+    return items;
+  }, [visibleEvents, aspects, W, memeW]);
+
   const svgH =
-    TOP_PAD +
-    Math.max(visibleEvents.length - 1, 0) * ROW_H +
-    CARD_H +
-    BOTTOM_PAD;
+    (laid.length
+      ? laid[laid.length - 1].cy + laid[laid.length - 1].halfH
+      : TOP_PAD) + BOTTOM_PAD;
 
   const paths = useMemo(() => {
     const rng = seededRng(13);
     return laid.slice(0, -1).map((a, i) => {
       const b = laid[i + 1];
-      const x1 = a.cx, y1 = a.cy + a.ry + 4;
-      const x2 = b.cx, y2 = b.cy - b.ry - 4;
+      const x1 = a.cx, y1 = a.cy + a.halfH + 4;
+      const x2 = b.cx, y2 = b.cy - b.halfH - 4;
       const midY = y1 + (y2 - y1) * (0.35 + rng() * 0.3);
       return buildPath(x1, y1, x2, y2, midY);
     });
@@ -257,7 +322,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
             textTransform: "uppercase",
             fontWeight: 400,
           }}>
-            The Plotline
+            THE FEED
           </h1>
           <span style={{
             fontSize: 11,
@@ -308,11 +373,8 @@ export default function TimelineAside({ events, currentDay, isActive }) {
         position: "fixed",
         top: "0px",
         left: "0px",
-        // transform: "translate(-50%, -50%)",
         right: "0px",
         bottom: "0px",
-        // maxWidth: 400,
-        // aspectRatio: "1",
         pointerEvents: "none",
         zIndex: 10,
         opacity: flickerVisible ? 1 : 0,
@@ -326,7 +388,6 @@ export default function TimelineAside({ events, currentDay, isActive }) {
               width: "100%",
               height: "100%",
               objectFit: "fill",
-              // filter: "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)",
             }}
             alt=""
           />
@@ -335,9 +396,9 @@ export default function TimelineAside({ events, currentDay, isActive }) {
 
       <div style={{ display: "flex", justifyContent: "center" }}>
         <svg
-          width={SVG_W}
+          width={W}
           height={svgH}
-          viewBox={`0 0 ${SVG_W} ${svgH}`}
+          viewBox={`0 0 ${W} ${svgH}`}
           style={{ overflow: "visible", touchAction: "pan-y", userSelect: "none" }}
         >
           {/* Connecting paths */}
@@ -364,71 +425,48 @@ export default function TimelineAside({ events, currentDay, isActive }) {
             />
           ))}
 
-          {/* ── Event cards ── */}
-          {laid.map(({ ev, i, cx, cy, rx, ry }) => {
+          {/* ── Meme cards — natural proportions, capped width, no overlap ── */}
+          {laid.map(({ ev, i, key, cx, cy, w, h }) => {
             const isCurrentDay = ev.day === currentDay;
-            const subjectUrl = ev.cutouts?.subject;
-            const imgUrl = subjectUrl || ev.cloudinaryUrl;
-            const desc =
-              ev.descriptionShort ||
-              ev.analysisRaw?.descriptionShort ||
-              "";
 
-            const heroTagId = ev.heroTagId || ev.analysisRaw?.heroTagId || null;
-            const heroTag = heroTagId
-              ? HERO_TAGS.find((t) => t.id === heroTagId) || defaultTagForDay(ev.day)
-              : defaultTagForDay(ev.day);
+            const memeImg = ev.cloudinaryUrl;
+            const memeText = ev.analysisRaw?.memeText || "";
 
             const isAnchor =
               isCurrentDay &&
               i === visibleEvents.findIndex((e) => e.day === currentDay);
 
-            const textRng = seededRng(i * 1337 + 42);
-            const textRight = textRng() > 0.5;
+            // ── Meta notes (date · day · short description) ──
+            const dateStr = formatDate(
+              ev.createdAt ?? ev.timestamp ?? ev.date ?? ev.uploadedAt,
+            );
+            const desc = (
+              ev.descriptionShort ||
+              ev.analysisRaw?.descriptionShort ||
+              ""
+            ).slice(0, DESC_MAX_CHARS).trimEnd();
+
+            // Notes go on the OPEN side: meme left of centre → notes right, and
+            // vice-versa. Text hugs the meme's inner edge.
+            const notesOnRight = cx < W / 2;
+            const memeLeft = cx - w / 2;
+            const memeRight = cx + w / 2;
+            const noteX = notesOnRight ? memeRight + NOTE_GAP : EDGE;
+            const noteW = notesOnRight
+              ? Math.max(0, (W - EDGE) - (memeRight + NOTE_GAP))
+              : Math.max(0, (memeLeft - NOTE_GAP) - EDGE);
+            const noteAlign = notesOnRight ? "left" : "right";
+            const showNotes =
+              noteW > NOTE_MIN_W && (dateStr || desc || ev.day != null);
 
             return (
               <g key={ev.id || i} overflow="visible">
-                <defs overflow="visible">
-                  <clipPath id={`ellclip-${i}`}>
-                    <ellipse cx={cx} cy={cy} rx={rx - 2} ry={ry - 2} />
-                  </clipPath>
-                </defs>
-
-                {/* Ellipse border */}
-                <ellipse
-                  cx={cx}
-                  cy={cy}
-                  rx={rx}
-                  ry={ry}
-                  fill="var(--blue)"
-                  stroke="var(--red)"
-                  strokeWidth={5}
-                  overflow="visible"
-                />
-
-                {/* Image */}
-                {imgUrl && imgUrl.length > 1 && (
-                  <image
-                    href={cloudinaryResize(imgUrl, 200)}
-                    x={cx - rx}
-                    y={cy - ry}
-                    width={rx * 2}
-                    height={ry * 2}
-                    preserveAspectRatio={subjectUrl ? "xMidYMid meet" : "xMidYMid slice"}
-                    clipPath={`url(#ellclip-${i})`}
-                    style={{
-                      filter: "brightness(0) saturate(100%) invert(76%) sepia(99%) saturate(600%) hue-rotate(60deg) brightness(100%)",
-                    }}
-                  />
-                )}
-
-                {/* Description text */}
                 <foreignObject
-                  x={textRight ? cx : cx - rx}
-                  y={cy - ry - 70 / 1.5}
-                  width={rx + 25}
-                  height={"auto"}
-                  overflow={"visible"}
+                  x={cx - w / 2}
+                  y={cy - h / 2}
+                  width={w}
+                  height={h}
+                  overflow="visible"
                 >
                   <div
                     xmlns="http://www.w3.org/1999/xhtml"
@@ -438,26 +476,122 @@ export default function TimelineAside({ events, currentDay, isActive }) {
                     }}
                     data-idx={i}
                     style={{
+                      position: "relative",
                       width: "100%",
-                      boxSizing: "border-box",
-                      textAlign: textRight ? "right" : "left",
+                      height: "100%",
+                      pointerEvents: "none",
+                      lineHeight: 0,
                     }}
                   >
-                    {desc && (
+                    {memeImg && memeImg.length > 1 && (
+                      <img
+                        src={cloudinaryResize(memeImg, memeW * 2)}
+                        alt=""
+                        onLoad={handleImgLoad(key)}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          height: "auto",
+                          border: "3px solid var(--red)",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    )}
+
+                    {/* Caption — uniform size, laid over the image */}
+                    {memeText && (
                       <div style={{
-                        fontSize: 8,
-                        color: "white",
-                        lineHeight: 0.9,
-                        fontStyle: "italic",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "6px 8px",
+                        boxSizing: "border-box",
                       }}>
-                        {desc}
+                        <div style={{
+                          fontFamily: "Impact, system-ui, sans-serif",
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          textAlign: "center",
+                          color: "#fff",
+                          fontSize: captionFont,
+                          lineHeight: 1,
+                          letterSpacing: 0.3,
+                          WebkitTextStroke: "0.5px var(--red)",
+                          textShadow: "0 1px 3px rgba(0,0,0,0.75)",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}>
+                          {memeText}
+                        </div>
                       </div>
                     )}
                   </div>
                 </foreignObject>
+
+                {/* ── Meta notes — small white labels beside the meme ── */}
+                {showNotes && (
+                  <foreignObject
+                    x={noteX}
+                    y={cy - h / 2}
+                    width={noteW}
+                    height={h}
+                    overflow="visible"
+                  >
+                    <div
+                      xmlns="http://www.w3.org/1999/xhtml"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 3,
+                        width: "100%",
+                        alignItems: notesOnRight ? "flex-start" : "flex-end",
+                        textAlign: noteAlign,
+                        color: "#fff",
+                        fontFamily: "system-ui, sans-serif",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {dateStr && (
+                        <div style={{
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          textTransform: "uppercase",
+                          opacity: 0.7,
+                        }}>
+                          {dateStr}
+                        </div>
+                      )}
+                      {ev.day != null && (
+                        <div style={{
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          textTransform: "uppercase",
+                          fontWeight: 700,
+                        }}>
+                          Day {ev.day}
+                        </div>
+                      )}
+                      {desc && (
+                        <div style={{
+                          fontSize: 10,
+                          lineHeight: 1.25,
+                          opacity: 0.85,
+                          maxWidth: isMobile ? "100%" : DESC_MAX_W,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 6,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}>
+                          {desc}
+                        </div>
+                      )}
+                    </div>
+                  </foreignObject>
+                )}
               </g>
             );
           })}

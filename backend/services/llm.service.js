@@ -90,40 +90,38 @@ export async function describeImageShort(imageUrl) {
     imageB64 = await fetchImageB64(imageUrl);
   } catch (err) {
     console.warn("[LLM] Image fetch failed:", err.message);
-    return "";
+    return { caption: "", memeText: "" };
   }
 
   try {
-    const description = await ollamaGenerate({
+    const raw = await ollamaGenerate({
       model: "llava:latest",
-      prompt: `Output only a single short factual scene caption, maximum 88 characters, 1 sentence.
+      prompt: `Look at this image. You must respond with EXACTLY two lines, no more, no less:
 
-Describe only the visible scene content:
-- who or what is present
-- what they are doing
-- where they are
+    CAPTION: [one factual sentence, max 88 chars, no lead-ins like "This is" or "A photo of"]
+    MEME: [one funny internet-style caption, max 60 chars]
 
-Rules:
-- Do NOT mention the image, picture, photo, painting, artwork, style, medium, or format.
-- Do NOT use lead-ins like "This is", "There is", "In this image", or "A picture of".
-- Do NOT add explanations, hedging, or extra text.
-- Be clinical, concise, and visual.
-- Return caption text only.
-
-Good output example:
-2 people dancing in a field
-
-Bad output examples:
-This is an image of 2 people dancing in a field
-A painting of 2 people dancing in a field
-In this photo, 2 people are dancing in a field`,
+    Example response:
+    CAPTION: Two people dancing in a muddy field at sunset.
+    MEME: when you find your people`,
       images: [imageB64],
     });
-    console.log(`[LLM] Short description: ${description.length} chars`, description);
-    return description;
+
+    console.log(`[LLM] Raw short output:\n`, raw);
+
+    const captionMatch = raw.match(/CAPTION:\s*(.+)/i);
+    const memeMatch    = raw.match(/MEME:\s*(.+)/i);
+
+    const caption  = captionMatch ? captionMatch[1].trim() : raw.trim();
+    const memeText = memeMatch    ? memeMatch[1].trim()    : "";
+
+    console.log(`[LLM] Caption: ${caption.length} chars`, caption);
+    console.log(`[LLM] Meme: ${memeText.length} chars`, memeText);
+
+    return { caption, memeText };
   } catch (err) {
     console.warn("[LLM] Short description failed:", err.message);
-    return "";
+    return { caption: "", memeText: "" };
   }
 }
 
@@ -173,64 +171,71 @@ export async function describeImageLong(imageUrl) {
 
 
 // ── Call 1: Creative chapter generation ──────────────────────────────────
+async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastChapter, openHook, chatHistory = [] }) {
 
-async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastChapter, chatHistory = [] }) {
- 
+  if (!openHook) {
+    const lastAssistant = [...chatHistory].reverse().find(m => m.role === "assistant")?.content;
+    const source = lastChapter || lastAssistant;
+    if (source) openHook = extractHook(parseChapter(source).chapter);
+  }
+
   const chosenOperator = roll(OPERATOR_PERCENT) ? pickRandom(OPERATORS) : null;
   const moment = roll(MOMENT_PERCENT) ? pickRandom(INTERNET_MOMENTS) : null;
-  console.log("[LLM] moment:", moment?.ref || "none", "| lastChapter:", lastChapter?.slice(0, 60));
-  ///${moment ? `WEAVE THIS IN SUBTLY: ${moment.ref} — ${moment.hint}\n` : ""}
+  console.log("[LLM] moment:", moment?.ref || "none", "| openHook:", openHook?.slice(0, 60) || "none");
 
-  
-    // Build the user turn for this chapter
-    const userContent =
-          `NEW EVIDENCE FROM THE FIELD:
-          ${desc}
-          
-          This image was tagged: ${tagRule}
-          
-          WHERE WE ARE IN THE SAGA TODAY:
-          ${arcCtx}
-          
-          ${stateContext ? `SAGA STATE:\n${stateContext}\n` : ""}
 
-          ${chosenOperator ? `use this operator once: ${chosenOperator}\n` : ""}
-          ${moment ? `make a subtle reference to this internet phenomenon: ${moment.ref} — ${moment.hint}\n` : ""}
+  const userContent =
+        `THE LAST CHAPTER ENDED ON THIS OPEN HOOK:
+        "${openHook || "Alice has only just arrived. Nothing is open yet."}"
 
-          Continue the saga. Write what happens next.
-          HEADLINE: (max 8 words)
-          CHAPTER: (3 sentences, each max 12 words)`;
-  
-    // Build messages array:
-    // system prompt + all previous chapter turns + this new turn
-    const messages = [
-      { role: "system", content: VOICE_PROMPT },
-      ...chatHistory,
-      { role: "user", content: userContent },
-    ];
-  
-    const raw = await ollamaChat({ model: localModelName, messages });
-    console.log("[LLM] Raw chapter output:\n", raw);
-  
-    const parsed = parseChapter(raw);
-  
-    // Return the new history turn so caller can append it
-    const newHistory = [
-      { role: "user",      content: userContent },
-      { role: "assistant", content: raw },
-    ];
-  
-    return { ...parsed, newHistory };
+        This new photograph is WHAT ALICE SEES NEXT as she chases that hook.
+        Read the image AS the continuation — the answer, a clue, a complication, or a twist on it.
+        Connect to the hook FIRST. Only then turn the plot and plant the next one.
+
+        PREVIOUSLY IN THE SAGA:
+        ${lastChapter || "This is the first page of Alice's diary."}
+
+        TODAY'S PHOTOGRAPH — what Alice is living right now:
+        ${desc}
+
+        THE ROLE OF THIS PHOTOGRAPH:
+        ${tagRule}
+
+        TODAY'S MOOD AND MANDATE:
+        ${arcCtx}
+
+        OPEN THREADS (resolve one if you can — do not pile on new ones):
+        ${stateContext || "None yet."}${moment ? `\n\nWeave in a subtle nod to: ${moment.ref} — ${moment.hint}` : ""}${chosenOperator ? `\n\n${chosenOperator}` : ""}
+
+        Write the next chapter. Resume the hook, anchor in the photograph, move the plot one step, plant a new hook.
+        HEADLINE then CHAPTER. Chapter max 5 sentences.`;
+
+  const messages = [
+    { role: "system", content: VOICE_PROMPT },
+    ...chatHistory,
+    { role: "user", content: userContent },
+  ];
+
+  const raw = await ollamaChat({ model: localModelName, messages });
+  console.log("[LLM] Raw chapter output:\n", raw);
+
+  const parsed = parseChapter(raw);
+  const newHistory = [{ role: "assistant", content: raw }];
+
+  return { ...parsed, newHistory };
 }
 
 // ── Call 2: State extraction ──────────────────────────────────────────────
 
-async function extractStateUpdates({ headline, chapter, desc, tagRule, tagId }) {
+async function extractStateUpdates({ headline, chapter, desc, tagRule, tagId, openThreads = [] }) {
 const prompt = `You are a precise story-state tracker for the Saga of Omni-Alice.
 Read the chapter below. Extract ONLY things that matter for the ongoing saga.
 Be conservative. If unsure, skip it. Do not invent. Do not infer from images.
 
 CHAPTER: "${headline ? headline + " — " : ""}${chapter}"
+
+OPEN THREADS RIGHT NOW:
+${openThreads.length ? openThreads.map(t => `- ${t}`).join("\n") : "none"}
 
 RULES:
 - ALICE_TRAIT: only concrete character traits shown in THIS chapter
@@ -239,16 +244,12 @@ RULES:
 - CONSPIRACY_SEED: only if a specific detail hints at Slop Plot. One sentence, concrete.
 - BELIEF_ADD: only if Alice explicitly believes something new. Her words or clear internal state.
 - SUMMARY: 2 sentences max. What happened. What changed.
-- THREAD_OPEN: only if THIS CHAPTER introduces a concrete unresolved story question
-  involving a named person, place, or object Alice has actually interacted with.
+- THREAD_OPEN: only if THIS CHAPTER plants a concrete unresolved question
+  involving a named person, place, or object Alice actually interacted with.
   Format: [NAME] — one sentence describing the unresolved tension.
-  Example: "The Backstage Map — Alice found a handdrawn map; where does it lead?"
-  Example: "The Watcher — someone has been making eye contact across three fields"
-  NOT: "The pink throne raised questions" — that is an image object, not a story thread
-  NOT: "Mystery unfolds" — too vague to pay off
-
-THREAD_RESOLVE: only if an existing open thread is concretely closed in this chapter.
-  Use the exact thread name from when it was opened.
+  Open AT MOST ONE new thread, and only if the chapter clearly plants one.
+- THREAD_RESOLVE: if the chapter closes one of the OPEN THREADS listed above,
+  emit it using that thread's EXACT name. Resolving beats opening.
 
 Do NOT extract:
 - Challenges from image objects (pink thrones, crowns, chairs)
@@ -264,7 +265,6 @@ END_UPDATES`;
   console.log("[LLM] Raw state output:\n", raw);
   return parseStateUpdates(raw);
 }
-
 // ── generateStoryOutput — two-call pipeline ───────────────────────────────
 
 export async function generateStoryOutput({ config, analysis, state }) {
@@ -278,33 +278,37 @@ export async function generateStoryOutput({ config, analysis, state }) {
   const { formatStateForPrompt } = await import("./story.state.service.js");
   const stateContext = state ? formatStateForPrompt(state) : "";
 
-  console.log("[LLM] Call 1 — generating chapter. Tag:", tagId, "Arc day:", arcDay);
+  console.log("[LLM] Call 1 — chapter. Tag:", tagId, "Arc day:", arcDay, "| hook:", state?.openHook || "none");
 
-  // ── Call 1: Generate the creative chapter ─────────────────────────
-  const { headline, chapter, newHistory } = await generateChapterText({
+  const { headline, chapter, hook, newHistory } = await generateChapterText({
     desc,
     tagRule,
     arcCtx,
     stateContext,
     lastChapter: state?.lastChapter || null,
-    chatHistory:  state?.chatHistory  || [],
+    openHook:    state?.openHook    || null,
+    chatHistory: state?.chatHistory || [],
   });
 
   if (!chapter) throw new Error("Chapter generation returned empty");
 
   console.log("[LLM] Call 2 — extracting state updates");
 
-  // ── Call 2: Extract state updates from the chapter ────────────────
   const stateUpdates = await extractStateUpdates({
     headline,
     chapter,
     desc,
     tagRule,
     tagId,
+    openThreads: state?.openThreads || [],   // ← point at wherever your live threads live
   });
-  
-  return { headline, chapter, stateUpdates: { ...stateUpdates, newHistory } };
 
+  // Persist the new hook so the NEXT chapter is forced to resume it.
+  return {
+    headline,
+    chapter,
+    stateUpdates: { ...stateUpdates, newHistory, openHook: hook },
+  };
 }
 
 // ── Output parsers ────────────────────────────────────────────────────────
@@ -317,10 +321,16 @@ function parseChapter(raw) {
     ? headlineMatch[1].trim().replace(/^["']|["']$/g, "")
     : null;
 
-  // Fall back to full raw if no CHAPTER: tag found
   const chapter = chapterMatch ? chapterMatch[1].trim() : raw.trim();
+  const hook    = extractHook(chapter);
 
-  return { headline, chapter };
+  return { headline, chapter, hook };
+}
+
+function extractHook(chapter) {
+  const sentences = chapter.match(/[^.!?]+[.!?]+/g) || [chapter];
+  const lastQuestion = [...sentences].reverse().find(s => s.trim().endsWith("?"));
+  return (lastQuestion || sentences.at(-1) || chapter).trim();
 }
 
 function parseStateUpdates(raw) {
@@ -370,6 +380,8 @@ function parseStateUpdates(raw) {
         updates.challengeResolve = [...(updates.challengeResolve || []), value]; break;
       case "BELIEF_ADD":
         updates.beliefAdd = [...(updates.beliefAdd || []), value]; break;
+      case "CONSPIRACY_SEED":
+        updates.conspiracySeed = [...(updates.conspiracySeed || []), value]; break;
       case "BELIEF_INVERT":
         updates.beliefInvert = [...(updates.beliefInvert || []), value]; break;
       case "THREAD_OPEN":

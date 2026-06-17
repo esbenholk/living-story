@@ -17,7 +17,7 @@ Feeling: curious, playful, slightly disoriented. The festival feels a little str
 Alice encounters invitations to adventure — things out of place, strange things, odd encounters, small mysteries.
 
 WHO WE ARE FOLLOWING:
-OMNI-ALICE is a festival guest on her way to see Zara Larsson.
+OMNI-ALICE is a festival guest at Roskilde Festival.
 She is curious, adventurous, always says yes to new things.
 
 Narrative direction:

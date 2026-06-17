@@ -82,6 +82,9 @@ export function applyUpdates(state, updates) {
   const next = { ...state };
   next.chaptersWritten = (next.chaptersWritten || 0) + 1;
 
+  if (updates.openHook) next.openHook = updates.openHook;
+  if (updates.conspiracySeed) next.conspiracySeed = [...(state.conspiracySeed || []), ...updates.conspiracySeed];
+
   // ── Alice ──────────────────────────────────────────────────────────────
   if (updates.aliceTraits?.length)
     next.aliceTraits = dedupe([...next.aliceTraits, ...updates.aliceTraits]);
