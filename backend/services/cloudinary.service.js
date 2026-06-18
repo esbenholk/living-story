@@ -60,3 +60,27 @@ export function extractPublicIds(cloudResult, cutouts) {
   }
   return ids;
 }
+
+
+export async function uploadVideo(buffer, filename, context = {}) {
+  const contextStr = toCloudinaryContext(context);
+  const publicId = sanitizePublicId(filename);
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "video",
+        folder: "living-story/recordings",
+        public_id: publicId,
+        overwrite: false,
+        context: contextStr || undefined,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      },
+    );
+
+    stream.end(buffer);
+  });
+}

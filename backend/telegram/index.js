@@ -48,7 +48,7 @@ function validToken(envVar) {
   return val && val.trim().length > 10; // real tokens are ~46 chars
 }
 
-export function initAllBots(app) {
+export function initAllBots(app, io) {
   const bots = [];
 
   console.log("[Telegram] Tokens found:", {
@@ -66,7 +66,7 @@ export function initAllBots(app) {
     bots.push(createGroupBot(process.env.TELEGRAM_GROUP_BOT_TOKEN.trim()));
 
   if (validToken("TELEGRAM_MASTER_BOT_TOKEN"))
-    bots.push(createMasterBot(process.env.TELEGRAM_MASTER_BOT_TOKEN.trim()));
+    bots.push(createMasterBot(process.env.TELEGRAM_MASTER_BOT_TOKEN.trim(), io));
 
   for (const { id, env } of HERO_TAGS_ENV) {
     if (validToken(env))
