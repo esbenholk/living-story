@@ -278,6 +278,27 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     });
   }, [laid]);
 
+if (!events.length) {
+    return (
+      <div style={{
+        height: "100dvh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "system-ui",
+        color: "rgba(255,255,255,0.3)",
+        fontSize: 12,
+        textAlign: "center",
+        padding: 32,
+        background: "var(--blue)",
+        letterSpacing: 2,
+        textTransform: "uppercase",
+      }}>
+        <h1>The feed is the plotline dataset. it runs on memories. submit them now</h1>
+      </div>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div
@@ -335,17 +356,9 @@ export default function TimelineAside({ events, currentDay, isActive }) {
         </div>
       </div>
 
-      {events.length === 0 && (
-        <p style={{
-          color: "#333",
-          fontSize: 13,
-          marginTop: 80,
-          textAlign: "center",
-          letterSpacing: 1,
-        }}>
-          No uploads yet — be the first.
-        </p>
-      )}
+
+
+
 
       {hasMore && (
         <div style={{ display: "flex", justifyContent: "center", padding: "16px 0 0" }}>

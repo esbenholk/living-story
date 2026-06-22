@@ -105,7 +105,7 @@ export default function InfoOverlay() {
         .info-columns {
           display: flex;
           flex-direction: row;
-          padding: 40px;
+          padding: 20px;
           gap: 10px;
         }
         @media (max-width: 640px) {
@@ -453,7 +453,7 @@ export default function InfoOverlay() {
 
 
         <div className="footer" style={{backgroundColor: "var(--red)", padding: "50px", display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "flex-end"}}>
-          <p>*** all images on the site submitted by users and governed by Esben Holk. <br></br>
+          <p>*** all images on the site and in the artwork are submitted by users and governed by Esben Holk. <br></br>
           if you see images spreading hate or have seen an image of youself that you didn't conset to share, please contact Esben Holk for its immediate removal from the dataset</p>
           <a href="https://ig.me/m/esbenholk">contact on instagram</a>
           <a href="mailto:esbenholk.kunst@gmail.com">contact on email</a>
