@@ -98,7 +98,7 @@ export async function describeImageShort(imageUrl) {
       model: "llava:latest",
       prompt: `Look at this image. You must respond with EXACTLY two lines, no more, no less:
 
-    CAPTION: [one factual sentence, max 88 chars, no lead-ins like "This is" or "A photo of"]
+    CAPTION: [one factual sentence describing what is on the image, max 88 chars, Do not use any lead-ins like "This is" or "In this image", simple state was is there: fx "a bowl of apples"]
     MEME: [one funny internet-style caption, max 60 chars]
 
     Example response:
@@ -140,7 +140,7 @@ export async function describeImageLong(imageUrl) {
   try {
     const description = await ollamaGenerate({
       model: "llava:latest",
-      prompt: `A the voice of a tabloid journalist describe this image
+      prompt: `For an image prompt to replicate this image, please describe it preciseley
       Focus on:
       - What is physically happening — actions, movement, interactions
       - Who is present and what they are doing
@@ -208,6 +208,7 @@ async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastCh
         ${stateContext || "None yet."}${moment ? `\n\nWeave in a subtle nod to: ${moment.ref} — ${moment.hint}` : ""}${chosenOperator ? `\n\n${chosenOperator}` : ""}
 
         Write the next chapter. Resume the hook, anchor in the photograph, move the plot one step, plant a new hook.
+        Write to OMNI-ALICE, meaning you should say "you" in all references to OMNI-ALICE. 
         HEADLINE then CHAPTER. Chapter max 5 sentences.`;
 
   const messages = [

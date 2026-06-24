@@ -399,13 +399,8 @@ function ChapterCard({ chapter, colors }) {
     </div>
       <div style={{ background: colors.headline, padding: "5px 5px"}}>
         <p style={{
-          fontSize: 17,
-                    fontFamily: "system-ui",
-          color: colors.text,
-          margin: 0,
-          lineHeight: 0.8,
-          whiteSpace: "pre-line",
-        }}>
+          color: colors.text
+        }} className="responsiveText">
           {cleanText(chapter.text)}
         </p>
 
