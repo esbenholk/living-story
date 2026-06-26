@@ -5,6 +5,10 @@ const ANIMATION = `
   from { transform: translateX(0); }
   to   { transform: translateX(50%); }
 }
+@keyframes ticker-x-reverse {
+  from { transform: translateX(50%); }
+  to   { transform: translateX(0); }
+}
 @keyframes ticker-y-up {
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
@@ -22,10 +26,14 @@ export default function Ticker({
   color = "var(--red)",
   borderColor = "var(--red)",
   opacity = 1,
+  reverse = false,
 }) {
   const isTop = position === "top";
+  const isBottom = position === "bottom";
   const isLeft = position === "left";
   const isRight = position === "right";
+
+  const isHorizontal = isTop || isBottom;
 
   const single = `${text} · `.repeat(30);
 
@@ -42,12 +50,12 @@ export default function Ticker({
     borderStyle: "solid",
     borderWidth: "var(--borderwidth)",
     transition: "border-color 0.3s, color 0.3s",
-    ...(isTop && {
-      top: 0,
+    ...(isHorizontal && {
       left: 0,
       right: 0,
       height: 40,
       flexDirection: "row",
+      ...(isTop ? { top: 0 } : { bottom: 0 }),
     }),
     ...(isLeft && {
       left: 0,
@@ -55,7 +63,6 @@ export default function Ticker({
       bottom: 0,
       width: 40,
       flexDirection: "column",
-      // no rotate — writingMode handles reading direction
     }),
     ...(isRight && {
       right: 0,
@@ -66,13 +73,17 @@ export default function Ticker({
     }),
   };
 
+  // Horizontal default scrolls one way; `reverse` flips it.
+  // Handy if you want the bottom ticker travelling opposite the top one.
+  const horizontalAnim = reverse ? "ticker-x-reverse" : "ticker-x";
+
   const wrapperStyle = {
     display: "flex",
-    flexDirection: isTop ? "row" : "column",
-    animation: isTop
-      ? `ticker-x     ${speed}s linear infinite`
+    flexDirection: isHorizontal ? "row" : "column",
+    animation: isHorizontal
+      ? `${horizontalAnim} ${speed}s linear infinite`
       : isLeft
-        ? `ticker-y-up  ${speed}s linear infinite`
+        ? `ticker-y-up   ${speed}s linear infinite`
         : `ticker-y-down ${speed}s linear infinite`,
     willChange: "transform",
   };
@@ -81,13 +92,11 @@ export default function Ticker({
     whiteSpace: "nowrap",
     fontSize: 30,
     letterSpacing: 2,
-
     color,
     opacity,
     transition: "color 0.3s",
-    ...(!isTop && { writingMode: "vertical-rl" }),
-    // Left ticker: rotate text 180° so reading direction faces screen centre
-    // (bottom-to-top reading). The container and animation are untouched.
+    ...(!isHorizontal && { writingMode: "vertical-rl" }),
+    // Left ticker: rotate 180° so reading direction faces screen centre.
     ...(isLeft && { transform: "rotate(180deg)" }),
   };
 

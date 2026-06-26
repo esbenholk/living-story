@@ -9,6 +9,26 @@ import { useStory } from "./hooks/useStory.js";
 import { useSocket } from "./hooks/useSocket.js";
 import InfoOverlay from "./components/InfoOverlay.jsx";
 
+import Ticker from "./components/Ticker.jsx";
+
+const SLIDE_TICKERS = [
+  {
+    top: "U ALSO LOSING THE PLOT?",
+    left: "SUBMIT (TO) THE PLOT",
+    right: "SWIPE TO EXPLORE",
+  },
+  {
+    top: "Timeline · Every moment · Every face · ",
+    left: "Living Story · Day {day} · ",
+    right: "The archive · ",
+  },
+  {
+    top: "The story so far · Chapter by chapter · ",
+    left: "Living Story · Day {day} · ",
+    right: "Words · Images · Memory · ",
+  },
+];
+
 const panelLabels = ["SUBMIT", "THE FEED", "THE SAGA"];
 
 const HEALTH_INTERVAL = 30_000;
@@ -23,7 +43,15 @@ function getTagFromUrl() {
 }
 
 export default function App() {
-  const { events, chapters, currentDay, currentConfig, addEvent } = useStory();
+  const {
+    events,
+    chapters,
+    currentDay,
+    currentConfig,
+    addEvent,
+    hasStarted,
+    startDate,
+  } = useStory();
   useSocket(addEvent);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -88,6 +116,8 @@ export default function App() {
       }}
     >
       <InfoOverlay />
+
+      {hasStarted === false && <PreLaunchOverlay startDate={startDate} />}
 
       <Swiper
         slidesPerView={1}
@@ -164,6 +194,154 @@ export default function App() {
             {label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function getRemaining(target) {
+  const diff = Math.max(0, target - Date.now());
+  return {
+    days: Math.floor(diff / 86_400_000),
+    hours: Math.floor((diff % 86_400_000) / 3_600_000),
+    minutes: Math.floor((diff % 3_600_000) / 60_000),
+    seconds: Math.floor((diff % 60_000) / 1000),
+    done: diff === 0,
+  };
+}
+
+const UNITS = [
+  ["DAYS", "days"],
+  ["HRS", "hours"],
+];
+
+const cell = {
+  border: "var(--borderwidth) solid var(--red)",
+  background: "var(--blue)",
+  color: "var(--red)",
+  padding: "12px 14px",
+  minWidth: 64,
+  fontFamily: "system-ui",
+  fontVariantNumeric: "tabular-nums",
+};
+
+function PreLaunchOverlay({ startDate }) {
+  const target = startDate ? new Date(startDate).getTime() : null;
+
+  const [remaining, setRemaining] = useState(() =>
+    target ? getRemaining(target) : null,
+  );
+
+  useEffect(() => {
+    if (!target) return;
+    setRemaining(getRemaining(target));
+    const id = setInterval(() => setRemaining(getRemaining(target)), 1000);
+    return () => clearInterval(id);
+  }, [target]);
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 199,
+        background: "var(--red)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 32,
+        textAlign: "center",
+        padding: "60px",
+      }}
+    >
+      <Ticker
+        position="left"
+        text={"the slop plot is getting ready for u"}
+        color={"var(--highlight)"}
+        borderColor={"var(--red)"}
+      />
+
+      <Ticker
+        position="right"
+        text={"the slop plot is getting ready for u"}
+        color={"var(--highlight)"}
+        borderColor={"var(--red)"}
+      />
+
+      <Ticker
+        position="top"
+        text={"the slop plot is getting ready for u"}
+        color={"var(--highlight)"}
+        borderColor={"var(--red)"}
+      />
+      <Ticker
+        position="bottom"
+        text={"the slop plot is getting ready for u"}
+        color={"var(--highlight)"}
+        borderColor={"var(--red)"}
+      />
+      <div
+        style={{
+          fontSize: 23,
+          letterSpacing: 4,
+          textTransform: "uppercase",
+          color: "var(--blue)",
+        }}
+      >
+        THE SLOP PLOT BOT IS LIVE IN
+      </div>
+
+      {remaining && !remaining.done && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "var(--borderwidth)",
+          }}
+        >
+          {UNITS.map(([label, key]) => (
+            <div key={key} style={cell}>
+              <div style={{ fontSize: 30, lineHeight: 1 }}>
+                {String(remaining[key]).padStart(2, "0")}
+              </div>
+              <div style={{ fontSize: 9, letterSpacing: 2, marginTop: 8 }}>
+                {label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(!remaining || remaining.done) && (
+        <div
+          style={{
+            fontFamily: "system-ui",
+            fontSize: 13,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+            color: "var(--red)",
+          }}
+        >
+          Stand by
+        </div>
+      )}
+
+      <div
+        style={{
+          fontFamily: "system-ui",
+          fontSize: 10,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          color: "var(--blue)",
+          opacity: 0.6,
+          maxWidth: 320,
+          lineHeight: 1.6,
+        }}
+      >
+        SLOP PLOT isnt running yet! <br></br>thank u for coming thoooooooo
       </div>
     </div>
   );

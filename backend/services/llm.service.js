@@ -13,10 +13,9 @@ const TIMEOUT_MS = 120_000;
 import VOICE_PROMPT from "../config/llmVoicePrompt.js";
 import INTERNET_MOMENTS from "../config/internetMoments.js";
 import ARC_CONTEXT from "../config/arcContext.js";
- import { getTagRule } from "../config/tagRules.js";
+import { getTagRule } from "../config/tagRules.js";
 
 const localModelName = "qwen2.5:14b";
-
 
 // ── Core Ollama helper ────────────────────────────────────────────────────
 
@@ -69,9 +68,6 @@ async function ollamaChat({ model, messages }) {
     clearTimeout(timer);
   }
 }
- 
-
-
 
 // ── Image fetch helper ────────────────────────────────────────────────────
 
@@ -110,10 +106,10 @@ export async function describeImageShort(imageUrl) {
     console.log(`[LLM] Raw short output:\n`, raw);
 
     const captionMatch = raw.match(/CAPTION:\s*(.+)/i);
-    const memeMatch    = raw.match(/MEME:\s*(.+)/i);
+    const memeMatch = raw.match(/MEME:\s*(.+)/i);
 
-    const caption  = captionMatch ? captionMatch[1].trim() : raw.trim();
-    const memeText = memeMatch    ? memeMatch[1].trim()    : "";
+    const caption = captionMatch ? captionMatch[1].trim() : raw.trim();
+    const memeText = memeMatch ? memeMatch[1].trim() : "";
 
     console.log(`[LLM] Caption: ${caption.length} chars`, caption);
     console.log(`[LLM] Meme: ${memeText.length} chars`, memeText);
@@ -157,7 +153,10 @@ export async function describeImageLong(imageUrl) {
       Write 3-5 sentences.`,
       images: [imageB64],
     });
-    console.log(`[LLM] Long description: ${description.length} chars`, description);
+    console.log(
+      `[LLM] Long description: ${description.length} chars`,
+      description,
+    );
     return description;
   } catch (err) {
     console.warn("[LLM] Long description failed:", err.message);
@@ -167,25 +166,34 @@ export async function describeImageLong(imageUrl) {
 
 // ── Tag behaviour definitions ─────────────────────────────────────────────
 
-
-
-
 // ── Call 1: Creative chapter generation ──────────────────────────────────
-async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastChapter, openHook, chatHistory = [] }) {
-
+async function generateChapterText({
+  desc,
+  tagRule,
+  arcCtx,
+  stateContext,
+  lastChapter,
+  openHook,
+  chatHistory = [],
+}) {
   if (!openHook) {
-    const lastAssistant = [...chatHistory].reverse().find(m => m.role === "assistant")?.content;
+    const lastAssistant = [...chatHistory]
+      .reverse()
+      .find((m) => m.role === "assistant")?.content;
     const source = lastChapter || lastAssistant;
     if (source) openHook = extractHook(parseChapter(source).chapter);
   }
 
   const chosenOperator = roll(OPERATOR_PERCENT) ? pickRandom(OPERATORS) : null;
   const moment = roll(MOMENT_PERCENT) ? pickRandom(INTERNET_MOMENTS) : null;
-  console.log("[LLM] moment:", moment?.ref || "none", "| openHook:", openHook?.slice(0, 60) || "none");
+  console.log(
+    "[LLM] moment:",
+    moment?.ref || "none",
+    "| openHook:",
+    openHook?.slice(0, 60) || "none",
+  );
 
-
-  const userContent =
-        `THE LAST CHAPTER ENDED ON THIS OPEN HOOK:
+  const userContent = `THE LAST CHAPTER ENDED ON THIS OPEN HOOK:
         "${openHook || "Alice has only just arrived. Nothing is open yet."}"
 
         This new photograph is WHAT ALICE SEES NEXT as she chases that hook.
@@ -228,15 +236,22 @@ async function generateChapterText({ desc, tagRule, arcCtx, stateContext, lastCh
 
 // ── Call 2: State extraction ──────────────────────────────────────────────
 
-async function extractStateUpdates({ headline, chapter, desc, tagRule, tagId, openThreads = [] }) {
-const prompt = `You are a precise story-state tracker for the Saga of Omni-Alice.
+async function extractStateUpdates({
+  headline,
+  chapter,
+  desc,
+  tagRule,
+  tagId,
+  openThreads = [],
+}) {
+  const prompt = `You are a precise story-state tracker for the Saga of Omni-Alice.
 Read the chapter below. Extract ONLY things that matter for the ongoing saga.
 Be conservative. If unsure, skip it. Do not invent. Do not infer from images.
 
 CHAPTER: "${headline ? headline + " — " : ""}${chapter}"
 
 OPEN THREADS RIGHT NOW:
-${openThreads.length ? openThreads.map(t => `- ${t}`).join("\n") : "none"}
+${openThreads.length ? openThreads.map((t) => `- ${t}`).join("\n") : "none"}
 
 RULES:
 - ALICE_TRAIT: only concrete character traits shown in THIS chapter
@@ -270,16 +285,23 @@ END_UPDATES`;
 
 export async function generateStoryOutput({ config, analysis, state }) {
   const { descriptionLong, descriptionShort, tags, heroTag } = analysis;
-  const desc    = descriptionShort || descriptionLong || tags?.join(", ") || "";
-  const tagId   = heroTag?.id || "hero";
-  const arcDay  = state?.grandArcDay || 1;
+  const desc = descriptionShort || descriptionLong || tags?.join(", ") || "";
+  const tagId = heroTag?.id || "hero";
+  const arcDay = state?.grandArcDay || 1;
   const tagRule = getTagRule(tagId, arcDay);
-  const arcCtx  = ARC_CONTEXT[arcDay] || ARC_CONTEXT[1];
+  const arcCtx = ARC_CONTEXT[arcDay] || ARC_CONTEXT[1];
 
   const { formatStateForPrompt } = await import("./story.state.service.js");
   const stateContext = state ? formatStateForPrompt(state) : "";
 
-  console.log("[LLM] Call 1 — chapter. Tag:", tagId, "Arc day:", arcDay, "| hook:", state?.openHook || "none");
+  console.log(
+    "[LLM] Call 1 — chapter. Tag:",
+    tagId,
+    "Arc day:",
+    arcDay,
+    "| hook:",
+    state?.openHook || "none",
+  );
 
   const { headline, chapter, hook, newHistory } = await generateChapterText({
     desc,
@@ -287,7 +309,7 @@ export async function generateStoryOutput({ config, analysis, state }) {
     arcCtx,
     stateContext,
     lastChapter: state?.lastChapter || null,
-    openHook:    state?.openHook    || null,
+    openHook: state?.openHook || null,
     chatHistory: state?.chatHistory || [],
   });
 
@@ -301,7 +323,7 @@ export async function generateStoryOutput({ config, analysis, state }) {
     desc,
     tagRule,
     tagId,
-    openThreads: state?.openThreads || [],   // ← point at wherever your live threads live
+    openThreads: state?.openThreads || [], // ← point at wherever your live threads live
   });
 
   // Persist the new hook so the NEXT chapter is forced to resume it.
@@ -316,81 +338,113 @@ export async function generateStoryOutput({ config, analysis, state }) {
 
 function parseChapter(raw) {
   const headlineMatch = raw.match(/HEADLINE:\s*(.+)/i);
-  const chapterMatch  = raw.match(/CHAPTER:\s*([\s\S]+?)(?=STATE_UPDATES:|END_UPDATES|$)/i);
+  const chapterMatch = raw.match(
+    /CHAPTER:\s*([\s\S]+?)(?=STATE_UPDATES:|END_UPDATES|$)/i,
+  );
 
   const headline = headlineMatch
     ? headlineMatch[1].trim().replace(/^["']|["']$/g, "")
     : null;
 
   const chapter = chapterMatch ? chapterMatch[1].trim() : raw.trim();
-  const hook    = extractHook(chapter);
+  const hook = extractHook(chapter);
 
   return { headline, chapter, hook };
 }
 
 function extractHook(chapter) {
   const sentences = chapter.match(/[^.!?]+[.!?]+/g) || [chapter];
-  const lastQuestion = [...sentences].reverse().find(s => s.trim().endsWith("?"));
+  const lastQuestion = [...sentences]
+    .reverse()
+    .find((s) => s.trim().endsWith("?"));
   return (lastQuestion || sentences.at(-1) || chapter).trim();
 }
 
 function parseStateUpdates(raw) {
   // Find the STATE_UPDATES block if present, otherwise parse the whole response
-  const block = raw.match(/STATE_UPDATES:\s*([\s\S]+?)(?=END_UPDATES|$)/i)?.[1] || raw;
+  const block =
+    raw.match(/STATE_UPDATES:\s*([\s\S]+?)(?=END_UPDATES|$)/i)?.[1] || raw;
   const updates = {};
-  const lines   = block
+  const lines = block
     .split("\n")
-    .map(l => l.trim())
-    .filter(l => l && !l.startsWith("[") && !l.startsWith("//") && !l.startsWith("─"));
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l && !l.startsWith("[") && !l.startsWith("//") && !l.startsWith("─"),
+    );
 
   for (const line of lines) {
     const colonIdx = line.indexOf(":");
     if (colonIdx === -1) continue;
-    const key   = line.slice(0, colonIdx).trim().toUpperCase();
+    const key = line.slice(0, colonIdx).trim().toUpperCase();
     const value = line.slice(colonIdx + 1).trim();
     if (!value || value.startsWith("[")) continue;
 
     switch (key) {
       case "ALICE_TRAIT":
-        updates.aliceTraits = value.split(",").map(s => s.trim()).filter(Boolean); break;
+        updates.aliceTraits = value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        break;
       case "ALICE_APPEARANCE":
-        updates.aliceAppearance = value; break;
+        updates.aliceAppearance = value;
+        break;
       case "ALICE_EXPERIENCE":
-        updates.aliceExperiences = [value]; break;
+        updates.aliceExperiences = [value];
+        break;
       case "VILLAIN_NAME":
-        updates.villainName = value; break;
+        updates.villainName = value;
+        break;
       case "VILLAIN_TRAIT":
-        updates.villainTraits = value.split(",").map(s => s.trim()).filter(Boolean); break;
+        updates.villainTraits = value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        break;
       case "VILLAIN_APPEARANCE":
-        updates.villainAppearance = value; break;
+        updates.villainAppearance = value;
+        break;
       case "NPC_JOIN": {
-        const [name, role, traits] = value.split("|").map(s => s.trim());
-        updates.npcJoin = [...(updates.npcJoin || []), { name, role, traits }]; break;
+        const [name, role, traits] = value.split("|").map((s) => s.trim());
+        updates.npcJoin = [...(updates.npcJoin || []), { name, role, traits }];
+        break;
       }
       case "NPC_FLIP": {
-        const [name, allegiance] = value.split("|").map(s => s.trim());
-        updates.npcFlip = [...(updates.npcFlip || []), { name, allegiance }]; break;
+        const [name, allegiance] = value.split("|").map((s) => s.trim());
+        updates.npcFlip = [...(updates.npcFlip || []), { name, allegiance }];
+        break;
       }
       case "QUEST_OPEN":
-        updates.questOpen = [...(updates.questOpen || []), value]; break;
+        updates.questOpen = [...(updates.questOpen || []), value];
+        break;
       case "QUEST_CLOSE":
-        updates.questClose = [...(updates.questClose || []), value]; break;
+        updates.questClose = [...(updates.questClose || []), value];
+        break;
       case "CHALLENGE_OPEN":
-        updates.challengeOpen = [...(updates.challengeOpen || []), value]; break;
+        updates.challengeOpen = [...(updates.challengeOpen || []), value];
+        break;
       case "CHALLENGE_RESOLVE":
-        updates.challengeResolve = [...(updates.challengeResolve || []), value]; break;
+        updates.challengeResolve = [...(updates.challengeResolve || []), value];
+        break;
       case "BELIEF_ADD":
-        updates.beliefAdd = [...(updates.beliefAdd || []), value]; break;
+        updates.beliefAdd = [...(updates.beliefAdd || []), value];
+        break;
       case "CONSPIRACY_SEED":
-        updates.conspiracySeed = [...(updates.conspiracySeed || []), value]; break;
+        updates.conspiracySeed = [...(updates.conspiracySeed || []), value];
+        break;
       case "BELIEF_INVERT":
-        updates.beliefInvert = [...(updates.beliefInvert || []), value]; break;
+        updates.beliefInvert = [...(updates.beliefInvert || []), value];
+        break;
       case "THREAD_OPEN":
-        updates.threadOpen = [...(updates.threadOpen || []), value]; break;
+        updates.threadOpen = [...(updates.threadOpen || []), value];
+        break;
       case "THREAD_RESOLVE":
-        updates.threadResolve = [...(updates.threadResolve || []), value]; break;
+        updates.threadResolve = [...(updates.threadResolve || []), value];
+        break;
       case "SUMMARY":
-        updates.summary = value; break;
+        updates.summary = value;
+        break;
     }
   }
   return updates;
@@ -399,27 +453,24 @@ function parseStateUpdates(raw) {
 // ── generateChapter — retry-compatible wrapper ────────────────────────────
 
 export async function generateChapter({ config, analysis }) {
-  const { loadState, saveState, applyUpdates } = await import("./story.state.service.js");
-  const state  = await loadState();
+  const { loadState, saveState, applyUpdates } =
+    await import("./story.state.service.js");
+  const state = await loadState();
   const output = await generateStoryOutput({ config, analysis, state });
 
   if (output.stateUpdates && Object.keys(output.stateUpdates).length > 0) {
     const nextState = applyUpdates(state, output.stateUpdates);
-    await saveState(nextState).catch(e =>
-      console.warn("[LLM] State save failed on retry:", e.message));
+    await saveState(nextState).catch((e) =>
+      console.warn("[LLM] State save failed on retry:", e.message),
+    );
   }
 
   return output.chapter;
 }
 
-
-
-
 function roll(percent) {
   return Math.random() * 100 < percent;
 }
-
-
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -427,7 +478,7 @@ function pickRandom(arr) {
 
 // ── Operators ─────────────────────────────────────────────────────────────
 
-const OPERATOR_PERCENT = 5; // % chance an operator is injected
+const OPERATOR_PERCENT = 10; // % chance an operator is injected
 
 const OPERATORS = [
   "Use one [noun]-maxxxing word naturally in the chapter. Example: grief-maxxxing, crowd-maxxxing, lore-maxxxing.",
@@ -438,4 +489,3 @@ const OPERATORS = [
 // ── Internet moments ──────────────────────────────────────────────────────
 
 const MOMENT_PERCENT = 2; // % chance an internet moment is injected
-

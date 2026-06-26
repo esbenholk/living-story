@@ -1,4 +1,4 @@
-import { CHAPTER_CONFIG } from '../config/chapters.js';
+import { CHAPTER_CONFIG } from "../config/chapters.js";
 
 export function getCurrentDay() {
   const start = new Date(process.env.STORY_START_DATE);
