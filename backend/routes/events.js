@@ -13,7 +13,7 @@ router.get("/events", async (req, res) => {
     include: { chapter: true },
   });
 
-  console.log(events);
+
   
   const mapped = events.map(ev => ({
     ...ev,

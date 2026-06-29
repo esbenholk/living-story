@@ -1,4 +1,11 @@
-import React, { useEffect, useRef, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  useState,
+} from "react";
 import Ticker from "./Ticker.jsx";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -11,6 +18,14 @@ function seededRng(seed) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+// Two stable pseudo-random values derived from an integer key.
+// Used so a given event always lands in the same horizontal spot,
+// regardless of how many older batches get prepended above it.
+function rand2(key) {
+  const rg = seededRng((key + 1) * 2654435761);
+  return [rg(), rg()];
 }
 
 function cloudinaryResize(url, width = 200) {
@@ -66,6 +81,9 @@ const NOTE_MIN_W = 40;      // hide the notes if there's less room than this
 const DESC_MAX_CHARS = 140; // hard cut-off for the description text
 const DESC_MAX_W = 200;     // desktop max width for the description (px)
 
+// How close to the top (px) a scroll-up gets before we load the next batch:
+const LOAD_TRIGGER = 140;
+
 // ── Path builder ──────────────────────────────────────────────────────────
 
 function buildPath(x1, y1, x2, y2, midY) {
@@ -95,6 +113,12 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [scrollDay, setScrollDay] = useState(currentDay);
 
+  // Pagination plumbing
+  const prevDistRef = useRef(null);   // distance-from-bottom captured before a load
+  const loadingRef = useRef(false);   // guards against double-loading
+  const armedRef = useRef(false);     // only load-on-scroll-up once we've left the top
+  const didInitRef = useRef(false);   // one-time initial jump to the most recent
+
   // Measured panel width — drives all the responsive sizing
   const [W, setW] = useState(() =>
     typeof window !== "undefined" ? Math.min(window.innerWidth, 500) : 420,
@@ -102,11 +126,14 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   // Measured image aspect ratios (width / height), keyed by event
   const [aspects, setAspects] = useState({});
 
+  // The most-recent `visibleCount` events (end of the array), oldest→newest,
+  // so the newest sits at the BOTTOM and scrolling up reaches older ones.
+  const start = Math.max(0, events.length - visibleCount);
   const visibleEvents = useMemo(
-    () => events.slice(0, visibleCount),
-    [events, visibleCount],
+    () => events.slice(start),
+    [events, start],
   );
-  const hasMore = visibleCount < events.length;
+  const hasMore = start > 0;
 
   // ── Derived responsive values ──
   const isMobile = W < MOBILE_BP;
@@ -116,6 +143,27 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     return Math.round(w);
   }, [W]);
   const captionFont = isMobile ? 16 : 30;
+
+  // ── Load an older batch (prepended above), preserving scroll position ──
+  const loadOlder = useCallback(() => {
+    if (loadingRef.current) return;
+    if (start <= 0) return; // nothing older to load
+    const el = scrollRef.current;
+    if (el) prevDistRef.current = el.scrollHeight - el.scrollTop;
+    loadingRef.current = true;
+    setVisibleCount((c) => Math.min(c + PAGE_SIZE, events.length));
+  }, [start, events.length]);
+
+  // After a new batch renders, re-anchor so the content the user was looking
+  // at stays put (new items appear above, not under the viewport).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && prevDistRef.current != null) {
+      el.scrollTop = el.scrollHeight - prevDistRef.current;
+      prevDistRef.current = null;
+    }
+    loadingRef.current = false;
+  }, [visibleCount]);
 
   // ── Measure the panel width (responsive to device) ──
   useEffect(() => {
@@ -128,6 +176,17 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     return () => ro.disconnect();
   }, []);
 
+  // ── One-time jump to the most recent (bottom) once we have real height ──
+  useLayoutEffect(() => {
+    if (didInitRef.current) return;
+    const el = scrollRef.current;
+    if (!el || !visibleEvents.length || el.clientHeight === 0) return;
+    el.scrollTop = el.scrollHeight;
+    armedRef.current = true;
+    didInitRef.current = true;
+  }, [visibleEvents.length, W]);
+
+  // Smooth re-anchor to bottom when the panel becomes active
   useEffect(() => {
     if (!isActive || !scrollRef.current) return;
     const timer = setTimeout(() => {
@@ -139,27 +198,52 @@ export default function TimelineAside({ events, currentDay, isActive }) {
     return () => clearTimeout(timer);
   }, [isActive]);
 
+  // ── Load older when the user scrolls UP near the top ──
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let lastTop = el.scrollTop;
+    const onScroll = () => {
+      const top = el.scrollTop;
+      if (top > 200) armedRef.current = true; // we've left the top → safe to arm
+      const goingUp = top < lastTop - 1;
+      lastTop = top;
+      if (
+        armedRef.current &&
+        goingUp &&
+        top < LOAD_TRIGGER &&
+        hasMore &&
+        !loadingRef.current
+      ) {
+        loadOlder();
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [hasMore, loadOlder]);
+
+  // ── Track which day is currently centred ──
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
-  const observer = new IntersectionObserver(
-    (entries) => {
-      const visible = entries
-        .filter((e) => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-      if (visible.length > 0) {
-        const last = visible[visible.length - 1];
-        const idx = Number(last.target.dataset.idx);
-        const ev = visibleEvents[idx];
-        if (ev) setScrollDay(ev.day);
-      }
-    },
-    {
-      root,
-      rootMargin: "-80px 0px 0px 0px", // ← exclude the sticky header height from top
-      threshold: 0.3,
-    },
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          const last = visible[visible.length - 1];
+          const idx = Number(last.target.dataset.idx);
+          const ev = visibleEvents[idx];
+          if (ev) setScrollDay(ev.day);
+        }
+      },
+      {
+        root,
+        rootMargin: "-80px 0px 0px 0px", // ← exclude the sticky header height from top
+        threshold: 0.3,
+      },
+    );
     const nodes = Object.values(sentinelRefs.current);
     nodes.forEach((n) => n && observer.observe(n));
     return () => observer.disconnect();
@@ -229,8 +313,9 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   };
 
   // ── Layout — vertical stacking so memes never overlap ──────────────────
+  // Scatter + gap are seeded by each event's ABSOLUTE index so already-visible
+  // memes keep their horizontal position when an older batch is prepended.
   const laid = useMemo(() => {
-    const rng = seededRng(7);
     const items = [];
     let cursor = TOP_PAD; // running y = bottom edge of the previous meme
 
@@ -239,7 +324,9 @@ export default function TimelineAside({ events, currentDay, isActive }) {
 
     for (let i = 0; i < visibleEvents.length; i++) {
       const ev = visibleEvents[i];
-      const key = ev.id ?? i;
+      const abs = start + i;            // stable index into the full array
+      const key = ev.id ?? abs;
+      const [r1, r2] = rand2(abs);
 
       // … and responsive to image height (its own proportions)
       const aspect = aspects[key] || DEFAULT_ASPECT;
@@ -247,20 +334,20 @@ export default function TimelineAside({ events, currentDay, isActive }) {
       const halfH = h / 2;
 
       // Horizontal scatter
-      const side = i % 2 === 0 ? -1 : 1;
+      const side = abs % 2 === 0 ? -1 : 1;
       const rawX =
-        W / 2 + side * W * SCATTER_BIAS + (rng() - 0.5) * W * SCATTER_SPAN;
+        W / 2 + side * W * SCATTER_BIAS + (r1 - 0.5) * W * SCATTER_SPAN;
       const cx = clamp(rawX, memeW / 2 + EDGE, W - memeW / 2 - EDGE);
 
       // Vertical placement: previous bottom + gap + this meme's half height
-      const gap = baseGap * (1 + rng() * GAP_JITTER);
+      const gap = baseGap * (1 + r2 * GAP_JITTER);
       const cy = i === 0 ? TOP_PAD + halfH : cursor + gap + halfH;
       cursor = cy + halfH;
 
-      items.push({ ev, i, key, cx, cy, w: memeW, h, halfH });
+      items.push({ ev, i, abs, key, cx, cy, w: memeW, h, halfH });
     }
     return items;
-  }, [visibleEvents, aspects, W, memeW]);
+  }, [visibleEvents, aspects, W, memeW, start]);
 
   const svgH =
     (laid.length
@@ -268,17 +355,17 @@ export default function TimelineAside({ events, currentDay, isActive }) {
       : TOP_PAD) + BOTTOM_PAD;
 
   const paths = useMemo(() => {
-    const rng = seededRng(13);
     return laid.slice(0, -1).map((a, i) => {
       const b = laid[i + 1];
       const x1 = a.cx, y1 = a.cy + a.halfH + 4;
       const x2 = b.cx, y2 = b.cy - b.halfH - 4;
-      const midY = y1 + (y2 - y1) * (0.35 + rng() * 0.3);
+      const [, f] = rand2(a.abs * 31 + 7); // stable per-pair curve offset
+      const midY = y1 + (y2 - y1) * (0.35 + f * 0.3);
       return buildPath(x1, y1, x2, y2, midY);
     });
   }, [laid]);
 
-if (!events.length) {
+  if (!events.length) {
     return (
       <div style={{
         height: "100dvh",
@@ -356,14 +443,11 @@ if (!events.length) {
         </div>
       </div>
 
-
-
-
-
+      {/* Load OLDER — sits at the top of the feed; scrolling up auto-loads too */}
       {hasMore && (
         <div style={{ display: "flex", justifyContent: "center", padding: "16px 0 0" }}>
           <button
-            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            onClick={loadOlder}
             style={{
               background: "transparent",
               border: "1px solid var(--red)",
@@ -376,7 +460,7 @@ if (!events.length) {
               borderRadius: 2,
             }}
           >
-            Load {Math.min(PAGE_SIZE, events.length - visibleCount)} more
+            Load {Math.min(PAGE_SIZE, start)} older
           </button>
         </div>
       )}

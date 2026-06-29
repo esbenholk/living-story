@@ -7,7 +7,7 @@ echo  ======================================
 echo.
 
 :: start-local.bat
-:: Starts ollama + sidecar + StreamDiffusion + ngrok.
+:: Starts ollama + sidecar + StreamDiffusion + ngrok + Unity.
 
 :: -------------------------------------------------------------------------
 :: CONFIG
@@ -17,6 +17,12 @@ set "STREAMDIFFUSION_DIR=C:\Users\esben\Downloads\StreamDiffusion"
 set "STREAMDIFFUSION_HOST=127.0.0.1"
 set "STREAMDIFFUSION_PORT=7860"
 set "STREAMDIFFUSION_ACCELERATION=xformers"
+
+:: --- Unity build --------------------------------------------------------
+:: Full path to the built Unity executable you want to launch. Update this
+:: to point at your .exe. The folder is derived automatically for the
+:: working directory.
+set "UNITY_EXE=C:\Users\esben\Desktop\SlopPLotFinishedBuild\slopplot.exe"
 
 :: --- Model / resolution -------------------------------------------------
 :: ACTIVE: sd-turbo at 768. Same model you already run, just bigger. SD2.1-
@@ -96,6 +102,20 @@ exit /b 1
 )
 
 :: -------------------------------------------------------------------------
+:: Check Unity executable
+:: -------------------------------------------------------------------------
+
+if not exist "%UNITY_EXE%" (
+echo  [ERROR] Unity executable not found:
+echo          "%UNITY_EXE%"
+echo.
+echo          Update the UNITY_EXE path near the top of this script.
+echo.
+pause
+exit /b 1
+)
+
+:: -------------------------------------------------------------------------
 :: Set OLLAMA_HOST so ngrok can reach it
 :: -------------------------------------------------------------------------
 
@@ -105,7 +125,7 @@ set OLLAMA_HOST=0.0.0.0
 :: Start Ollama
 :: -------------------------------------------------------------------------
 
-echo  [1/4] Starting Ollama...
+echo  [1/5] Starting Ollama...
 start "Ollama" cmd /k "set OLLAMA_HOST=0.0.0.0 && ollama serve"
 timeout /t 3 /nobreak >nul
 
@@ -113,7 +133,7 @@ timeout /t 3 /nobreak >nul
 :: Start sidecar
 :: -------------------------------------------------------------------------
 
-echo  [2/4] Starting sidecar...
+echo  [2/5] Starting sidecar...
 start "Sidecar" cmd /k "cd /d "%~dp0sidecar" && python app.py"
 timeout /t 3 /nobreak >nul
 
@@ -121,7 +141,7 @@ timeout /t 3 /nobreak >nul
 :: Start StreamDiffusion Unity backend
 :: -------------------------------------------------------------------------
 
-echo  [3/4] Starting StreamDiffusion Unity backend...
+echo  [3/5] Starting StreamDiffusion Unity backend...
 echo        model=%STREAMDIFFUSION_MODEL%  size=%STREAMDIFFUSION_WIDTH%x%STREAMDIFFUSION_HEIGHT%
 start "StreamDiffusion Unity Backend" cmd /k "cd /d "%STREAMDIFFUSION_DIR%" && call .venv\Scripts\activate.bat && python unity_backend\unity_stream_server.py --host %STREAMDIFFUSION_HOST% --port %STREAMDIFFUSION_PORT% --acceleration %STREAMDIFFUSION_ACCELERATION% --model-id %STREAMDIFFUSION_MODEL% --width %STREAMDIFFUSION_WIDTH% --height %STREAMDIFFUSION_HEIGHT% --cfg-type %STREAMDIFFUSION_CFG_TYPE% --guidance-scale %STREAMDIFFUSION_GUIDANCE% %STREAMDIFFUSION_EXTRA% --engine-dir "%STREAMDIFFUSION_DIR%\engines""
 timeout /t 5 /nobreak >nul
@@ -130,8 +150,18 @@ timeout /t 5 /nobreak >nul
 :: Start ngrok
 :: -------------------------------------------------------------------------
 
-echo  [4/4] Starting ngrok tunnels...
+echo  [4/5] Starting ngrok tunnels...
 start "ngrok" cmd /k "ngrok start --all --config "%~dp0ngrok.yml""
+timeout /t 3 /nobreak >nul
+
+:: -------------------------------------------------------------------------
+:: Start Unity project
+:: -------------------------------------------------------------------------
+
+echo  [5/5] Starting Unity project...
+echo        exe=%UNITY_EXE%
+for %%I in ("%UNITY_EXE%") do set "UNITY_DIR=%%~dpI"
+start "Unity" cmd /k "cd /d "%UNITY_DIR%" && "%UNITY_EXE%""
 timeout /t 3 /nobreak >nul
 
 echo.
@@ -141,6 +171,7 @@ echo  Ollama:          http://localhost:11434
 echo  Sidecar:         http://localhost:5001/health
 echo  StreamDiffusion: http://localhost:7860/health
 echo  ngrok:           http://localhost:4040
+echo  Unity:           %UNITY_EXE%
 echo.
 echo  NOTE: set Stream Resolution = %STREAMDIFFUSION_WIDTH% on the Unity
 echo        StreamDiffusionClient so Unity and the backend match.

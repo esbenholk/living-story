@@ -309,7 +309,10 @@ function ChapterCard({ chapter, colors }) {
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      border: `5px solid ${colors.headline}`,
+      borderTop: `5px solid ${colors.headline}`,
+      borderLeft: `5px solid ${colors.headline}`,
+      borderRight: `5px solid ${colors.headline}`,
+
       borderBottom: "0px solid red",
       padding: "5px 5px",
       position: "relative"
@@ -461,11 +464,14 @@ function ChapterCard({ chapter, colors }) {
 export default function StoryAside({ events, chapters, currentDay, isActive }) {
   const currentRef = useRef();
   
+  const scrollRef = useRef();
+
 
   useEffect(() => {
-    if (!isActive || !currentRef.current) return;
+    if (!isActive || !scrollRef.current) return;
     const timer = setTimeout(() => {
-      currentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const el = scrollRef.current;
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }, 400);
     return () => clearTimeout(timer);
   }, [isActive]);
@@ -520,14 +526,17 @@ export default function StoryAside({ events, chapters, currentDay, isActive }) {
   }
 
   return (
-    <div style={{
-      height: "100dvh",
-      overflowY: "auto",
-      padding: "45px 45px 60px",
-      color: "#e5e5e5",
-      background: "var(--blue)",
-      lineHeight: 1,
-    }}>
+    <div
+      ref={scrollRef}
+      style={{
+        height: "100dvh",
+        overflowY: "auto",
+        padding: "45px 45px 60px",
+        color: "#e5e5e5",
+        background: "var(--blue)",
+        lineHeight: 1,
+      }}
+    >
 
       <div style={{
         fontSize: 9,
@@ -548,7 +557,6 @@ export default function StoryAside({ events, chapters, currentDay, isActive }) {
           <React.Fragment key={day}>
             <div
               id={`story-day-${day}`}
-              ref={day === currentDay ? currentRef : null}
               style={{ marginBottom: 48 }}
             >
               <DayDivider day={day} tag={firstTag} currentDay={currentDay} />
