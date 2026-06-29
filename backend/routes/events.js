@@ -13,15 +13,9 @@ router.get("/events", async (req, res) => {
     include: { chapter: true },
   });
 
-<<<<<<< HEAD
-
-  
-  const mapped = events.map(ev => ({
-=======
   console.log(events);
 
   const mapped = events.map((ev) => ({
->>>>>>> 08cb33e8c9845689f58f489c86cf14f9a0f05301
     ...ev,
     heroTagId: ev.analysisRaw?.heroTagId || null,
     descriptionShort: ev.analysisRaw?.descriptionShort || null,
