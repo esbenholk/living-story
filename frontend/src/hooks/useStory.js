@@ -5,16 +5,20 @@ export function useStory() {
   const [chapters, setChapters] = useState([]);
   const [currentDay, setCurrentDay] = useState(null);
   const [currentConfig, setCurrentConfig] = useState(null);
+  const [hasStarted, setHasStarted] = useState(undefined); // undefined = not known yet
+  const [startDate, setStartDate] = useState(null);
 
   useEffect(() => {
     const base = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
     fetch(`${base}/api/events`)
       .then((r) => r.json())
-      .then(({ events, currentDay, currentConfig }) => {
+      .then(({ events, currentDay, currentConfig, hasStarted, startDate }) => {
         setEvents(events || []);
         setCurrentDay(currentDay || null);
         setCurrentConfig(currentConfig || null);
+        setHasStarted(hasStarted);
+        setStartDate(startDate || null);
       })
       .catch(console.error);
 
@@ -25,9 +29,6 @@ export function useStory() {
   }, []);
 
   function addEvent(payload) {
-
-  
-    
     setEvents((prev) => [
       ...prev,
       {
@@ -37,7 +38,6 @@ export function useStory() {
         cutouts: payload.cutouts,
         tags: payload.analysis?.tags || [],
         colours: payload.analysis?.colours || [],
-        // Both description fields — short for timeline, long for chapters
         descriptionShort: payload.analysis?.descriptionShort || null,
         descriptionLong: payload.analysis?.descriptionLong || null,
         description: payload.analysis?.descriptionShort || null,
@@ -61,5 +61,13 @@ export function useStory() {
     }
   }
 
-  return { events, chapters, currentDay, currentConfig, addEvent };
+  return {
+    events,
+    chapters,
+    currentDay,
+    currentConfig,
+    addEvent,
+    hasStarted,
+    startDate,
+  };
 }
