@@ -609,7 +609,7 @@ export default function UploadAside({
                   ref={inputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
+                  // capture="environment"
                   style={{ display: "none" }}
                   onChange={(e) => handleFile(e.target.files[0])}
                 />
