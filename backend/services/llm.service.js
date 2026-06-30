@@ -94,7 +94,7 @@ export async function describeImageShort(imageUrl) {
       model: "llava:latest",
       prompt: `Look at this image. You must respond with EXACTLY two lines, no more, no less:
 
-    CAPTION: [one factual sentence describing what is on the image, max 88 chars, Do not use any lead-ins like "This is" or "In this image", simple state was is there: fx "a bowl of apples". Do Not use any gendered descriptions. Do use gender: do not say "man" or "woman", say "person"]
+    CAPTION: [one factual sentence describing what is on the image, max 88 chars, Do not use any lead-ins like "This is" or "In this image", simple state was is there: fx "a bowl of apples". Do Not use any gendered descriptions. Do not use gender: do not say "man" or "woman", say "person"]
     MEME: [one funny internet-style caption, max 60 chars]
 
     Example response:
@@ -144,7 +144,7 @@ export async function describeImageLong(imageUrl) {
       - Anything unexpected or out of place
 
       Rules:
-      - Do Not use any gendered descriptions. As in: do not say "man" or "woman", say "person"
+      - Do Not use any gendered descriptions. Do not say "man" or "woman", say "person"
       - Do NOT mention the image, picture, photo, painting, artwork, style, medium, or format.
       - Do NOT use lead-ins like "This is", "There is", "In this image", or "A picture of".
       - Do NOT add explanations, hedging, or extra text.
