@@ -84,6 +84,16 @@ const DESC_MAX_W = 200;     // desktop max width for the description (px)
 // How close to the top (px) a scroll-up gets before we load the next batch:
 const LOAD_TRIGGER = 140;
 
+// ── Flicker tuning ──────────────────────────────────────────────────────
+// Was 12ms — that's ~83 image swaps/sec while scrolling, each one a fresh
+// <img src> change. Even with browser caching that's enough concurrent
+// requests to trip Chrome's per-domain connection limit and throw
+// ERR_INSUFFICIENT_RESOURCES, especially as the event pool grows.
+// Fix: preload every candidate image once (so swaps hit cache, not network)
+// and slow the interval down to something that still reads as a "flicker"
+// but isn't a request storm.
+const FLICKER_INTERVAL_MS = 100;
+
 // ── Path builder ──────────────────────────────────────────────────────────
 
 function buildPath(x1, y1, x2, y2, midY) {
@@ -259,12 +269,22 @@ export default function TimelineAside({ events, currentDay, isActive }) {
   const flickerPoolRef = useRef([]);
   const flickerIntervalRef = useRef(null);
   const scrollTimerRef = useRef(null);
+  const preloadedRef = useRef(new Set()); // URLs already preloaded, so we don't re-fetch them
 
-  // Keep pool in sync with visible events
+  // Keep pool in sync with visible events, and preload every image in it so
+  // the rapid flicker swaps below just repaint from cache instead of firing
+  // new network requests.
   useEffect(() => {
-    flickerPoolRef.current = visibleEvents
-      .map((ev) => ev.cloudinaryUrl)
-      .filter(Boolean);
+    const urls = visibleEvents.map((ev) => ev.cloudinaryUrl).filter(Boolean);
+    flickerPoolRef.current = urls;
+
+    urls.forEach((url) => {
+      const resized = cloudinaryResize(url, 600);
+      if (preloadedRef.current.has(resized)) return;
+      preloadedRef.current.add(resized);
+      const img = new Image();
+      img.src = resized;
+    });
   }, [visibleEvents]);
 
   // Start/stop the flicker interval on scroll
@@ -281,7 +301,7 @@ export default function TimelineAside({ events, currentDay, isActive }) {
         setFlickerUrl(pool[Math.floor(Math.random() * pool.length)]);
       };
       pick();
-      flickerIntervalRef.current = setInterval(pick, 12); // flicker speed (ms)
+      flickerIntervalRef.current = setInterval(pick, FLICKER_INTERVAL_MS);
     }
 
     function stopFlicker() {
