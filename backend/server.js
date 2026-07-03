@@ -14,7 +14,9 @@ import { uploadVideo } from "./services/cloudinary.service.js";
 
 const allowedOrigins = [
   "https://slopplot.online",
+  "https://slopplot.com",
   "https://www.slopplot.online",
+  "https://www.slopplot.com",
   "https://living-story-frontend.vercel.app",
   "http://localhost:5173", // local dev
   process.env.CLIENT_ORIGIN,
