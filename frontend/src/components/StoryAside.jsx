@@ -1,44 +1,15 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { HERO_TAGS } from "../config/heroTags.js";
+import { COLOR_PAIRS, randomColorPair } from "../config/colorPairs.jsx";
+import { SESSION_ALIAS, replaceAlice, cleanText } from "../config/alias.jsx";
+import { cloudinaryResize } from "../config/cloudinary.jsx";
 import Ticker from "./Ticker.jsx";
 import TagIcon from "./TagIcon.jsx";
 
-
-// ── Color palette — pairs that contrast well against each other ───────────
-
-const COLOR_PAIRS = [
-{ headline: "#ffe600", container: "#FF3400", text: "#3700ff" },
-{ headline: "#FF3400", container: "#3700ff", text: "#ffe600" },
-{ headline: "#00ff00", container: "#111111", text: "#FF3400" },
-{ headline: "#FF3400", container: "#2f00ff", text: "#00ff00" },
-{ headline: "#FF3400", container: "#111111", text: "#00ff00" },
-{ headline: "#ffe600", container: "#FF3400", text: "#2f00ff" },
-{ headline: "#000000", container: "#FF3400", text: "#ffffff" },
-];
-
-const ALIAS_NAMES = [
-  "SISSYFOS",
-  "ATLAS",
-  "QUERIA",
-  "ANIMA",
-  "TOM"
-];
-
-// Pick one alias per session — stable until page refresh
-const SESSION_ALIAS = ALIAS_NAMES[Math.floor(Math.random() * ALIAS_NAMES.length)];
-const SESSION_FIRST_NAME = SESSION_ALIAS.split("-")[1] || SESSION_ALIAS;
-const SESSION_FIRST_NAME_CAPITALISED = 
-  SESSION_FIRST_NAME.charAt(0).toUpperCase() + SESSION_FIRST_NAME.slice(1).toLowerCase();
-
-function replaceAlice(text) {
-  if (!text) return text;
-  return text
-    .replace(/OMNI-ALICE/g, SESSION_ALIAS)
-    .replace(/Omni-Alice/g, SESSION_ALIAS)
-    .replace(/omni-alice/g, SESSION_ALIAS.toLowerCase())
-    .replace(/\bALICE\b/g, SESSION_FIRST_NAME)
-    .replace(/\bAlice\b/g, SESSION_FIRST_NAME_CAPITALISED);
-}
+// NOTE: ALIAS_NAMES / SESSION_ALIAS / replaceAlice / cleanText now live in
+// ../utils/alias.js, and COLOR_PAIRS / randomColorPair in ../config/colorPairs.js —
+// shared with RecapAside so both Asides agree on the same session alias
+// and the same palette. Nothing else about their behavior changed.
 
 const tickerColor = "var(--red)";
 const tickerBorderColor = "var(--red)";
@@ -69,9 +40,9 @@ const tickerText = {
 
 // ── Random color assignment ───────────────────────────────────────────────
 
-function randomColorPair() {
-  return COLOR_PAIRS[Math.floor(Math.random() * COLOR_PAIRS.length)];
-}
+// function randomColorPair() {
+//   return COLOR_PAIRS[Math.floor(Math.random() * COLOR_PAIRS.length)];
+// }
 
 // ── Tag icon resolver ─────────────────────────────────────────────────────
 
@@ -91,12 +62,13 @@ function getCutoutImage(chapter) {
   const cutouts = chapter.uploadEvent?.cutouts || {};
 
   // Priority 1: full face pack — both eyes + mouth
+  // Each circle renders at 70px, so 150px (~2x retina) is plenty.
   if (cutouts.left_eye && cutouts.right_eye && cutouts.mouth) {
     return {
       type: "face_pack",
-      left_eye: cutouts.left_eye,
-      mouth: cutouts.mouth,
-      right_eye: cutouts.right_eye,
+      left_eye: cloudinaryResize(cutouts.left_eye, 150),
+      mouth: cloudinaryResize(cutouts.mouth, 150),
+      right_eye: cloudinaryResize(cutouts.right_eye, 150),
     };
   }
 
@@ -104,32 +76,23 @@ function getCutoutImage(chapter) {
   if (cutouts.left_eye && cutouts.right_eye) {
     return {
       type: "eyes_pack",
-      left_eye: cutouts.left_eye,
-      right_eye: cutouts.right_eye,
+      left_eye: cloudinaryResize(cutouts.left_eye, 150),
+      right_eye: cloudinaryResize(cutouts.right_eye, 150),
     };
   }
 
-  // Priority 3: subject cutout
-  if (cutouts.subject) return { type: "subject", url: cutouts.subject };
+  // Priority 3: subject cutout — renders at 120px tall, so 250px (~2x retina) is plenty.
+  if (cutouts.subject) return { type: "subject", url: cloudinaryResize(cutouts.subject, 250) };
 
   // Fallback: original image
   if (chapter.uploadEvent?.cloudinaryUrl) {
-    return { type: "original", url: chapter.uploadEvent.cloudinaryUrl };
+    return { type: "original", url: cloudinaryResize(chapter.uploadEvent.cloudinaryUrl, 250) };
   }
 
   return null;
 }
 
-// ── Clean chapter text ────────────────────────────────────────────────────
-
-function cleanText(text) {
-  if (!text) return "…";
-  return replaceAlice(text
-    .split("\n")
-    .filter(l => !l.trim().startsWith("OPERATOR_WORD"))
-    .join("\n")
-    .trim());
-}
+// cleanText now imported from ../utils/alias.js
 
 // ── Day divider ───────────────────────────────────────────────────────────
 
@@ -296,14 +259,14 @@ function ChapterCard({ chapter, colors }) {
 
   // ── Meme overlay state ──
   const [memeOpen, setMemeOpen] = useState(false);
-  const memeImage = chapter.uploadEvent?.cloudinaryUrl;
+  const memeImage = cloudinaryResize(chapter.uploadEvent?.cloudinaryUrl, 1200);
   const memeText = chapter.uploadEvent?.analysisRaw?.memeText;
   const hasMeme = Boolean(memeImage && memeText);
 
 
   
   return (
-    <div style={{position: "relative"}}>
+    <div id={`chapter-${chapter.id}`} style={{position: "relative"}}>
     <div style={{
       background: colors.container,
       overflow: "hidden",
@@ -461,20 +424,69 @@ function ChapterCard({ chapter, colors }) {
 
 // ── Main component ────────────────────────────────────────────────────────
 
-export default function StoryAside({ events, chapters, currentDay, isActive }) {
+export default function StoryAside({ events, chapters, currentDay, isActive, focusChapterId, onDidFocusChapter }) {
   const currentRef = useRef();
   
   const scrollRef = useRef();
 
 
+  // Scroll to bottom (latest chapter) when this Aside becomes active —
+  // but not if we've been asked to focus a specific chapter instead (see below).
   useEffect(() => {
-    if (!isActive || !scrollRef.current) return;
+    if (!isActive || !scrollRef.current || focusChapterId) return;
     const timer = setTimeout(() => {
       const el = scrollRef.current;
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }, 400);
     return () => clearTimeout(timer);
-  }, [isActive]);
+  }, [isActive, focusChapterId]);
+
+  // Scroll to one specific chapter — used when RecapAside sends the user
+  // here via "View in the Saga". Polls briefly for the target chapter's
+  // element (it may not be mounted yet the instant the slide switches),
+  // then scrolls scrollRef directly to it and clears the request.
+  //
+  // Deliberately NOT using element.scrollIntoView(): it walks up every
+  // ancestor with non-visible overflow — including Swiper's horizontal
+  // wrapper — and can nudge its scroll position even though Swiper positions
+  // slides with CSS transforms, not native scrolling. That mismatch is what
+  // previously left the view stuck between the two Asides.
+  useEffect(() => {
+    if (!isActive || !focusChapterId || !scrollRef.current) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20; // ~2s at 100ms apart — covers slide transition + render
+
+    const tryScroll = () => {
+      if (cancelled) return;
+      const container = scrollRef.current;
+      const el = container && document.getElementById(`chapter-${focusChapterId}`);
+
+      if (el) {
+        const containerRect = container.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetTop =
+          elRect.top - containerRect.top + container.scrollTop
+          - (container.clientHeight / 2) + (elRect.height / 2);
+        container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+        if (onDidFocusChapter) onDidFocusChapter();
+        return;
+      }
+
+      attempts += 1;
+      if (attempts >= maxAttempts) {
+        // Gave up — chapter isn't in the DOM. Still clear the request so
+        // it doesn't linger and silently retry forever.
+        if (onDidFocusChapter) onDidFocusChapter();
+        return;
+      }
+      setTimeout(tryScroll, 100);
+    };
+
+    const timer = setTimeout(tryScroll, 400); // let the slide transition start
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [isActive, focusChapterId, onDidFocusChapter]);
 
   // Assign random colors once on mount — stable until page refresh
   const colorMap = useMemo(() => {

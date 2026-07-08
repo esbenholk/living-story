@@ -5,6 +5,8 @@ import "./Index.css";
 import UploadAside from "./components/UploadAside.jsx";
 import TimelineAside from "./components/TimelineAside.jsx";
 import StoryAside from "./components/StoryAside.jsx";
+import RecapAside from "./components/RecapAside.jsx";
+import ThankYouAside from "./components/thankYouAside.jsx"
 import { useStory } from "./hooks/useStory.js";
 import { useSocket } from "./hooks/useSocket.js";
 import InfoOverlay from "./components/InfoOverlay.jsx";
@@ -29,7 +31,7 @@ const SLIDE_TICKERS = [
   },
 ];
 
-const panelLabels = ["SUBMIT", "THE FEED", "THE SAGA"];
+const panelLabels = ["SUBMIT", "THE FEED", "THE SAGA", "RECAP"];
 
 const HEALTH_INTERVAL = 30_000;
 
@@ -56,6 +58,10 @@ export default function App() {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const swiperRef = useRef(null);
+
+  // Set by RecapAside when the person taps "View this chapter in the Saga" —
+  // tells StoryAside (slide index 2) which chapter card to scroll to.
+  const [scrollToChapterId, setScrollToChapterId] = useState(null);
 
   // null = still checking, true = ok, false = down
   const [serviceStatus, setServiceStatus] = useState({
@@ -106,6 +112,20 @@ export default function App() {
     if (swiperRef.current) swiperRef.current.slideTo(index);
   }, []);
 
+  // RecapAside calls this with a chapter.id; it jumps to the Saga slide
+  // and asks StoryAside to scroll that exact chapter into view.
+  const goToChapterInSaga = useCallback((chapterId) => {
+    setScrollToChapterId(chapterId);
+    goToSlide(2); // StoryAside's slide index
+  }, [goToSlide]);
+
+  // Stable reference — this is in StoryAside's scroll-effect dependency
+  // array, so an inline arrow here would give it a new function every time
+  // App re-renders (e.g. on every live socket update) and reset the effect
+  // before its retry loop ever finished. That was very likely why the
+  // redirect silently stopped working.
+  const handleDidFocusChapter = useCallback(() => setScrollToChapterId(null), []);
+
   return (
     <div
       style={{
@@ -130,15 +150,7 @@ export default function App() {
         resizeObserver={false}
       >
         <SwiperSlide>
-          <UploadAside
-            currentDay={currentDay}
-            currentConfig={currentConfig}
-            onGoToStory={() => goToSlide(2)}
-            isActive={activeIndex === 0}
-            servicesReady={servicesReady}
-            servicesChecking={servicesChecking}
-            serviceStatus={serviceStatus}
-            defaultHeroTagId={urlTag}
+          <ThankYouAside
           />
         </SwiperSlide>
         <SwiperSlide>
@@ -153,6 +165,16 @@ export default function App() {
             chapters={chapters}
             currentDay={currentDay}
             isActive={activeIndex === 2}
+            focusChapterId={scrollToChapterId}
+            onDidFocusChapter={handleDidFocusChapter}
+          />
+        </SwiperSlide>
+        <SwiperSlide>
+          <RecapAside
+            chapters={chapters}
+            currentDay={currentDay}
+            isActive={activeIndex === 3}
+            onGoToChapter={goToChapterInSaga}
           />
         </SwiperSlide>
       </Swiper>
